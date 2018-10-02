@@ -659,6 +659,7 @@ begin
 end
 
 
+wire [31:0] pio_0, pio_1, pio_2, pio_3, pio_4 /* synthesis keep */;
 
 //=======================================================
 //  Structural coding
@@ -685,7 +686,13 @@ Computer_System The_System (
 
 	// 50 MHz clock bridge
 	.clock_bridge_0_in_clk_clk            (CLOCK_50), //(CLOCK_50),
-	
+
+	.pio_0_external_connection_export      (pio_0),      //   pio_0_external_connection.export
+	.pio_4_external_connection_export      (pio_4),      //   pio_4_external_connection.export
+	.pio_3_external_connection_export      (pio_3),      //   pio_3_external_connection.export
+	.pio_2_external_connection_export      (pio_2),      //   pio_2_external_connection.export
+	.pio_1_external_connection_export      (pio_1)       //   pio_1_external_connection.export	
+
 	// spike fifo 0
 	.fifo_hps_to_fpga_0_out_readdata      (spike_fifo_0_readdata),      //     fifo_hps_to_fpga_0_out.readdata
 	.fifo_hps_to_fpga_0_out_read          (read_spike_fifo_0),          //                           .read
