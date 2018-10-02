@@ -17,6 +17,11 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "ARM_A9_HPS.h"
+#include "hwlib.h"
+#include "socal/socal.h"
+#include "socal/hps.h"
+#include "socal/alt_gpio.h"
 
 
 // main bus; FIFO write address
@@ -42,25 +47,7 @@
 #define FIFO_EMPTY(a) ((*(a+1))& 2 )
 #define FIFO_FULL(a) ((*(a+1))& 1 )
 
-
-
-
-// the light weight buss base
-void *h2p_lw_virtual_base;
-// HPS_to_FPGA FIFO status address = 0
-volatile unsigned int * FIFO_write_status_ptr = NULL ;
-volatile unsigned int * FIFO_read_status_ptr = NULL ;
-
-// HPS_to_FPGA FIFO write address
-// main bus addess 0x0000_0000
-void *h2p_virtual_base;
-volatile unsigned int * FIFO_write_ptr = NULL ;
-volatile unsigned int * FIFO_read_ptr = NULL ;
-
-// /dev/mem file id
-int fd;	
-
-
+#define FIFO_ISTATUS(a) ((*(a+1))& 3 )
 
 bool isFIFOFull(volatile unsigned int *csrPointer)
 {
@@ -120,6 +107,30 @@ DATATYPE readFIFO(volatile unsigned int *csrPointer, volatile DATATYPE *readPoin
 	
 int main(void)
 {
+	// the light weight buss base
+	void *h2p_lw_virtual_base;
+	// HPS_to_FPGA FIFO status address = 0
+	volatile unsigned int * FIFO_write_status_ptr = NULL ;
+	volatile unsigned int * FIFO_read_status_ptr = NULL ;
+
+	// HPS_to_FPGA FIFO write address
+	// main bus addess 0x0000_0000
+	void *h2p_virtual_base;
+	volatile unsigned int * FIFO_write_ptr = NULL ;
+	volatile unsigned int * FIFO_read_ptr = NULL ;
+
+	volatile unsigned int * spike_FIFO_0_write_pointer = NULL;
+	volatile unsigned int * spike_FIFO_1_write_pointer = NULL;
+	volatile unsigned int * command_FIFO_write_pointer = NULL;
+	volatile unsigned int * result_FIFO_read_pointer = NULL;
+
+	volatile unsigned int * spike_FIFO_0_write_status_pointer = NULL;
+	volatile unsigned int * spike_FIFO_1_write_status_pointer = NULL;
+	volatile unsigned int * command_FIFO_write_status_pointer = NULL;
+	volatile unsigned int * result_FIFO_read_status_pointer = NULL;
+
+	// /dev/mem file id
+	int fd;	
 
 	// Declare volatile pointers to I/O registers (volatile 	
 	// means that IO load and store instructions will be used 	
@@ -144,9 +155,9 @@ int main(void)
 		return(1);
 	}
 	// the two status registers
-	FIFO_write_status_ptr = (unsigned int *)(h2p_lw_virtual_base);
+	FIFO_write_status_ptr = (unsigned int *)(h2p_lw_virtual_base + FIFO_HPS_TO_FPGA_IN_CSR_BASE);
 	// From Qsys, second FIFO is 0x20
-	FIFO_read_status_ptr = (unsigned int *)(h2p_lw_virtual_base + 0x20); //0x20
+	FIFO_read_status_ptr = (unsigned int *)(h2p_lw_virtual_base + FIFO_FPGA_TO_HPS_OUT_CSR_BASE); //0x20
 	
 	// ===========================================
 
@@ -159,8 +170,18 @@ int main(void)
 		return(1);
 	}
     // Get the address that maps to the FIFO read/write ports
-	FIFO_write_ptr =(unsigned int *)(h2p_virtual_base);
-	FIFO_read_ptr = (unsigned int *)(h2p_virtual_base + 0x10); //0x10
+	FIFO_write_ptr =(unsigned int *)(h2p_virtual_base + FIFO_HPS_TO_FPGA_IN_BASE);
+	FIFO_read_ptr = (unsigned int *)(h2p_virtual_base +FIFO_FPGA_TO_HPS_OUT_BASE); //0x10
+
+	spike_FIFO_0_write_pointer = (unsigned int *)(h2p_virtual_base + FIFO_HPS_TO_FPGA_0_IN_BASE);
+	spike_FIFO_1_write_pointer = (unsigned int *)(h2p_virtual_base + FIFO_HPS_TO_FPGA_1_IN_BASE);
+	command_FIFO_write_pointer = (unsigned int *)(h2p_virtual_base + FIFO_INSTRUCITON_IN_BASE);   
+	result_FIFO_read_pointer = (unsigned int *)(h2p_virtual_base + FIFO_FPGA2HPS_RESULT_OUT_BASE);
+
+	spike_FIFO_0_write_status_pointer = (unsigned int *)(h2p_lw_virtual_base + FIFO_HPS_TO_FPGA_0_IN_CSR_BASE);
+	spike_FIFO_1_write_status_pointer = (unsigned int *)(h2p_lw_virtual_base + FIFO_HPS_TO_FPGA_1_IN_CSR_BASE);
+	command_FIFO_write_status_pointer = (unsigned int *)(h2p_lw_virtual_base + FIFO_INSTRUCITON_IN_CSR_BASE);
+	result_FIFO_read_status_pointer = (unsigned int *)(h2p_lw_virtual_base + FIFO_FPGA2HPS_RESULT_OUT_CSR_BASE);
 	
 	//============================================
 	int N ;
@@ -235,6 +256,57 @@ int main(void)
 		printf("fill levels after block read\n\r");
 		printf("write=%d read=%d\n\r", getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr));
 		printf("=====================\n\r");
+	
+
+		printf("test state machines\n");
+		
+		// usleep( 100*1000 );
+
+		// write data to spike fifo 0 and fifo 1
+		printf("write 1 word to spike fifo 0 and spike fifo 1 \n");
+
+		printf("before write \n");
+		printf("spike fifo 0 level: %d, spike fifo 1 level %d \n",  getFIFOLevel(spike_FIFO_0_write_status_pointer), getFIFOLevel(spike_FIFO_1_write_status_pointer));
+		printf("spike fifo 0 csr: %d, spike fifo 1 csr %d \n", FIFO_ISTATUS(spike_FIFO_0_write_status_pointer), FIFO_ISTATUS(spike_FIFO_0_write_status_pointer));
+
+		writeFIFO(1, spike_FIFO_0_write_status_pointer, spike_FIFO_0_write_pointer, true);
+		writeFIFO(2, spike_FIFO_1_write_status_pointer, spike_FIFO_1_write_pointer, true);
+
+		printf("after write \n");
+		printf("spike fifo 0 level: %d, spike fifo 1 level %d \n",  getFIFOLevel(spike_FIFO_0_write_status_pointer), getFIFOLevel(spike_FIFO_1_write_status_pointer));
+		printf("spike fifo 0 csr: %d, spike fifo 1 csr %d \n", FIFO_ISTATUS(spike_FIFO_0_write_status_pointer), FIFO_ISTATUS(spike_FIFO_0_write_status_pointer));
+
+		// test command state machine
+		// commands:
+		//			1: generate spike 
+		//			2: enable spike buffer fsm
+
+		printf("write command 2(enable spike buffer fsm) to command fifo \n");
+		printf("before write command to command fifo\n");
+		printf("command fifo level: %d , result fifo level: %d \n", getFIFOLevel(command_FIFO_write_status_pointer), getFIFOLevel(result_FIFO_read_status_pointer));
+		printf("command fifo csr: %d , result fifo csr %d \n ", FIFO_ISTATUS(command_FIFO_write_status_pointer), FIFO_ISTATUS(result_FIFO_read_status_pointer));
+		
+		
+		printf("write command 2 to command buffer \n");
+		// write command 2 to command buffer to enable spike buffer fsm
+		writeFIFO(2, command_FIFO_write_status_pointer, command_FIFO_write_pointer, true);
+
+		printf("before read result from result fifo\n");
+		printf("command fifo level: %d , result fifo level: %d \n", getFIFOLevel(command_FIFO_write_status_pointer), getFIFOLevel(result_FIFO_read_status_pointer));
+		printf("command fifo csr: %d , result fifo csr %d \n ", FIFO_ISTATUS(command_FIFO_write_status_pointer), FIFO_ISTATUS(result_FIFO_read_status_pointer));
+
+		unsigned int result;
+
+		//result =  readFIFO(result_FIFO_read_status_pointer, result_FIFO_read_pointer, true);
+
+		// printf("result is: %d\n", result);
+
+		// printf("after read result from result fifo\n");
+		// printf("command fifo level: %d , result fifo level: %d \n", getFIFOLevel(command_FIFO_write_status_pointer), getFIFOLevel(result_FIFO_read_status_pointer));
+		// printf("command fifo csr: %d , result fifo csr %d \n ", FIFO_ISTATUS(command_FIFO_write_status_pointer), FIFO_ISTATUS(result_FIFO_read_status_pointer));
+
+
+
 	} // end while(1)
 } // end main
 
