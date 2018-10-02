@@ -402,7 +402,7 @@ reg [7:0] state ;
 reg [3:0] command_cs, command_ns;
 reg [31:0] command_buffer;
 reg generate_start, en_spike_fsm, generate_start_done, read_command_fifo, load_command_buffer;
-wire [31:0] command_fifo_readdata, command_fifo_csr_readdata;
+wire [31:0] command_fifo_readdata, command_fifo_csr_readdata /* synthesis keep */;
 
 
 always @(posedge CLOCK_50)
@@ -424,7 +424,7 @@ begin
 	if (command_cs == 0)
 	begin
 		// command fifo not empty
-		if (command_fifo_csr_readdata[1] != 1)
+		if (command_fifo_csr_readdata[1] != 1'b1)
 		begin
 			command_ns = 1;
 		end
@@ -491,7 +491,7 @@ reg[6:0] spike_cs, spike_ns;
 
 // control signals
 reg read_spike_fifo_0, read_spike_fifo_1, load_spike_buffer_0, load_spike_buffer_1, spike_fsm_done;
-wire[31:0] spike_fifo_0_readdata, spike_fifo_1_readdata, spike_fifo_0_csr_readdata, spike_fifo_1_csr_readdata;
+wire[31:0] spike_fifo_0_readdata, spike_fifo_1_readdata, spike_fifo_0_csr_readdata, spike_fifo_1_csr_readdata  /* synthesis keep */;
 
 always @(posedge CLOCK_50)
 begin
@@ -572,7 +572,7 @@ end
 reg [3:0] read_cs, read_ns, write_cs, write_ns;
 reg [31:0] buffer;
 reg hps_to_fpga_read, load_buffer, en_write_fsm, fpga_to_hps_in_write, write_fsm_ready;
-wire [31:0] hps_to_fpga_out_csr_readdata, fpga_to_hps_in_csr_readdata, fpga_to_hps_in_writedata, hps_to_fpga_readdata;
+wire [31:0] hps_to_fpga_out_csr_readdata, fpga_to_hps_in_csr_readdata, fpga_to_hps_in_writedata, hps_to_fpga_readdata /* synthesis keep */;
 
 
 always @(posedge CLOCK_50)
