@@ -364,13 +364,13 @@ wire			[15: 0]	hex3_hex0;
 //assign HEX1 = ~hex3_hex0[14: 8];
 //assign HEX2 = ~hex3_hex0[22:16];
 //assign HEX3 = ~hex3_hex0[30:24];
-assign HEX4 = 7'b1111111;
-assign HEX5 = 7'b1111111;
+// assign HEX4 = 7'b1111111;
+// assign HEX5 = 7'b1111111;
 
 HexDigit Digit0(HEX0, hex3_hex0[3:0]);
 HexDigit Digit1(HEX1, hex3_hex0[7:4]);
 HexDigit Digit2(HEX2, hex3_hex0[11:8]);
-HexDigit Digit3(HEX3, hex3_hex0[15:12]);
+//HexDigit Digit3(HEX3, hex3_hex0[15:12]);
 
 //=======================================================
 // HPS_to_FPGA FIFO state machine
@@ -393,172 +393,6 @@ wire sram_chipselect = 1'b1;
 reg [7:0] state ;
 
 
-
-
-
-//=======================================================
-// command state machine
-//=======================================================
-reg [3:0] command_cs, command_ns;
-reg [31:0] command_buffer;
-reg generate_start, en_spike_fsm, generate_start_done, read_command_fifo, load_command_buffer;
-wire [31:0] command_fifo_readdata, command_fifo_csr_readdata /* synthesis keep */;
-
-
-always @(posedge CLOCK_50)
-begin
-	if (~KEY[0])
-		command_cs <= 0 ;
-	else
-		command_cs <= command_ns;
-end
-
-
-always @(*)
-begin
-	
-	read_command_fifo = 1'b0;
-	load_command_buffer = 1'b0;
-	generate_start = 1'b0;
-	en_spike_fsm = 1'b0;
-	if (command_cs == 0)
-	begin
-		// command fifo not empty
-		if (command_fifo_csr_readdata[1] != 1'b1)
-		begin
-			command_ns = 1;
-		end
-		else
-			command_ns = 0;
-	end
-	else if (command_cs == 1)
-	begin
-		read_command_fifo = 1'b1;
-		command_ns = 2;
-	end
-	else if (command_cs == 2)
-	begin
-		
-		load_command_buffer = 1'b1;
-		command_ns = 4;
-	end
-	else if (command_cs == 4)
-	begin
-		// decode command
-		if (command_buffer == 32'd1)
-			generate_start = 1'b1;
-		else if (command_buffer == 32'd2)
-			en_spike_fsm = 1'b1;
-	
-		command_ns = 8;
-	end
-	else if (command_cs == 8)
-	begin
-	
-		// wait the done signal
-		if (spike_fsm_done == 1'b1)
-			command_ns = 0;
-		else if (generate_start_done == 1'b1)
-			command_ns = 0;
-		else
-			command_ns = 8;
-	end
-	else
-		command_ns = 0;
-end
-
-// command buffer
-always @(posedge CLOCK_50)
-begin
-	if (load_command_buffer == 1'b1)
-		command_buffer <= command_fifo_readdata;
-	
-	generate_start_done <= generate_start;
-end
-
-wire fpga2hps_result_write;
-wire [31:0] fpga2hps_result_writedata;
-
-
-assign fpga2hps_result_write = generate_start_done;
-assign fpga2hps_result_writedata = spike_buffer[63:32] + spike_buffer[31:0];
-
-
-//=======================================================
-// spike fifo read fsm
-//=======================================================
-reg[6:0] spike_cs, spike_ns;
-
-// control signals
-reg read_spike_fifo_0, read_spike_fifo_1, load_spike_buffer_0, load_spike_buffer_1, spike_fsm_done;
-wire[31:0] spike_fifo_0_readdata, spike_fifo_1_readdata, spike_fifo_0_csr_readdata, spike_fifo_1_csr_readdata  /* synthesis keep */;
-
-always @(posedge CLOCK_50)
-begin
-	if (~KEY[0])
-		spike_cs <= 0 ;
-	else
-		spike_cs <= spike_ns;
-end
-
-always @(*)
-begin
-	
-	spike_fsm_done = 1'b0;
-	read_spike_fifo_0 = 1'b0;
-	read_spike_fifo_1 = 1'b0;
-	spike_fsm_done = 1'b0;
-	
-	if (spike_cs == 0)
-	begin
-		if (en_spike_fsm == 1'b1)
-			spike_ns = 1;
-		else
-			spike_ns = 0;
-	end
-	else if (spike_cs == 1)
-	begin
-		spike_ns = 2;
-		read_spike_fifo_0 = 1'b1;
-	end
-	else if (spike_cs == 2)
-	begin
-		spike_ns = 4;
-		read_spike_fifo_1 = 1'b1;
-	end
-	else if (spike_cs == 4)
-	// wait the data from fifo
-		spike_ns = 8;
-	else if ( spike_cs == 8)
-	begin
-		spike_ns = 0;
-		spike_fsm_done = 1'b1;
-	end
-	else
-		spike_ns = 0;
-
-end
-
-
-reg [63:0] spike_buffer;
-
-always @(posedge CLOCK_50)
-begin
-	load_spike_buffer_0 <= read_spike_fifo_0;
-	load_spike_buffer_1 <= read_spike_fifo_1;
-	
-	if (load_spike_buffer_0 == 1'b1)
-		spike_buffer[31:0] <= spike_fifo_0_readdata;
-	
-	if (load_spike_buffer_1 == 1'b1)
-		spike_buffer[63:32] <= spike_fifo_1_readdata;
-		
-end
-
-//=======================================================
-// write back fsm
-//=======================================================
-
 //=======================================================
 // Controls for HPS_to_FPGA FIFO
 //=======================================================
@@ -570,10 +404,17 @@ end
 //           bit1==1 if empty
 
 reg [3:0] read_cs, read_ns, write_cs, write_ns;
-reg [31:0] buffer;
-reg hps_to_fpga_read, load_buffer, en_write_fsm, fpga_to_hps_in_write, write_fsm_ready;
+reg [31:0] buffer /* synthesis preserve */;
+reg hps_to_fpga_read, load_buffer, en_write_fsm, fpga_to_hps_in_write, write_fsm_ready, spike /* synthesis preserve */;
 wire [31:0] hps_to_fpga_out_csr_readdata, fpga_to_hps_in_csr_readdata, fpga_to_hps_in_writedata, hps_to_fpga_readdata /* synthesis keep */;
 
+
+// test command decode
+reg turn_on_hex_4, turn_on_hex_5, turn_off_hex_4, turn_off_hex_5;
+reg [6:0] hex_4, hex_5;
+wire [31:0] pio_12, pio34;
+reg write_back_pio, generare_start;
+reg [31:0] pio_mux;
 
 always @(posedge CLOCK_50)
 begin
@@ -581,7 +422,9 @@ begin
 		buffer <= hps_to_fpga_readdata;
 end
 
-assign fpga_to_hps_in_writedata = buffer;
+//assign fpga_to_hps_in_writedata = buffer;
+assign fpga_to_hps_in_writedata = (write_back_pio) ? pio_mux : buffer;
+
 
 // read state machine
 always @(posedge CLOCK_50)
@@ -640,6 +483,14 @@ begin
 	
 	write_fsm_ready = 1'b0;
 	fpga_to_hps_in_write = 1'b0;
+	turn_on_hex_4 = 1'b0;
+	turn_on_hex_5 = 1'b0;
+	turn_off_hex_4 = 1'b0;
+	turn_off_hex_5 = 1'b0;
+	pio_mux = pio_0;
+	generare_start = 1'b0;
+	write_back_pio = 1'b0;
+
 	if (write_cs == 0)
 	begin
 		write_fsm_ready = 1'b1;
@@ -653,11 +504,100 @@ begin
 	begin
 		write_ns = 0;
 		fpga_to_hps_in_write = 1'b1;
+
+		// decode command
+		if (buffer == 20)
+		begin
+			turn_on_hex_4 = 1'b1;
+			write_back_pio = 1'b1;
+			pio_mux = pio_1;
+			generare_start = 1'b1;
+		end
+		else if (buffer == 21)
+		begin
+			write_back_pio = 1'b1;
+			turn_on_hex_5 = 1'b1;
+			pio_mux = pio_2;
+		end
+		else if (buffer == 22)
+		begin
+			turn_off_hex_4 = 1'b1;
+			write_back_pio = 1'b1;
+			pio_mux = pio_3;
+		end
+		else if  (buffer == 23)
+		begin
+			turn_off_hex_5 = 1'b1;
+			write_back_pio = 1'b1;
+			pio_mux = pio_4;
+		end
 	end
 	else
 		write_ns = 0;
 end
 
+
+assign HEX4 = hex_4;
+assign HEX5 = hex_5;
+
+always @(posedge CLOCK_50)
+begin
+	if (turn_on_hex_4)
+		hex_4 <= 7'b0000000;
+	
+	if (turn_off_hex_4)
+		hex_4 <= 7'b1111111;
+
+	if (turn_on_hex_5)
+		hex_5 <= 7'b0000000;
+	
+	if (turn_off_hex_5)
+		hex_5 <= 7'b1111111;
+end
+
+// gnerate start signal
+
+reg [3:0] start_cs, start_ns;
+reg start, start_reg;
+
+always @(posedge CLOCK_50)
+begin
+
+	if (~KEY[0])
+		start_cs <= 0 ;
+	else
+		start_cs <= start_ns;
+end
+
+always @(*)
+begin
+	if (start_cs == 0)
+	begin
+		if (generare_start == 1'b1)
+			start_ns = 1;
+		else
+			start_ns = 0;		
+	end
+	else if (start_ns == 1)
+	begin
+
+		start = 1'b1;
+		start_ns = 0;
+	end
+	else
+		start_ns = 0;
+	
+end
+
+always @(posedge CLOCK_50)
+begin
+
+	if (start == 1'b1)
+		start_reg = 1'b1;
+
+end
+
+assign HEX3 = start_reg;
 
 wire [31:0] pio_0, pio_1, pio_2, pio_3, pio_4 /* synthesis keep */;
 
@@ -691,48 +631,8 @@ Computer_System The_System (
 	.pio_4_external_connection_export      (pio_4),      //   pio_4_external_connection.export
 	.pio_3_external_connection_export      (pio_3),      //   pio_3_external_connection.export
 	.pio_2_external_connection_export      (pio_2),      //   pio_2_external_connection.export
-	.pio_1_external_connection_export      (pio_1)       //   pio_1_external_connection.export	
+	.pio_1_external_connection_export      (pio_1),       //   pio_1_external_connection.export	
 
-	// spike fifo 0
-	.fifo_hps_to_fpga_0_out_readdata      (spike_fifo_0_readdata),      //     fifo_hps_to_fpga_0_out.readdata
-	.fifo_hps_to_fpga_0_out_read          (read_spike_fifo_0),          //                           .read
-	.fifo_hps_to_fpga_0_out_csr_address   (32'd1),   // fifo_hps_to_fpga_0_out_csr.address
-	.fifo_hps_to_fpga_0_out_csr_read      (1'b1),      //                           .read
-	.fifo_hps_to_fpga_0_out_csr_writedata ( ), //                           .writedata
-	.fifo_hps_to_fpga_0_out_csr_write     (1'b0),     //                           .write
-	.fifo_hps_to_fpga_0_out_csr_readdata  (spike_fifo_0_csr_readdata),  //                           .readdata
-	
-	// spike fifo 1
-	.fifo_hps_to_fpga_1_out_readdata      (spike_fifo_1_readdata),      //     fifo_hps_to_fpga_1_out.readdata
-	.fifo_hps_to_fpga_1_out_read          (read_spike_fifo_1),          //                           .read
-	.fifo_hps_to_fpga_1_out_csr_address   (32'd1),   // fifo_hps_to_fpga_1_out_csr.address
-	.fifo_hps_to_fpga_1_out_csr_read      (1'b1),      //                           .read
-	.fifo_hps_to_fpga_1_out_csr_writedata ( ), //                           .writedata
-	.fifo_hps_to_fpga_1_out_csr_write     (1'b0),     //                           .write
-	.fifo_hps_to_fpga_1_out_csr_readdata  (spike_fifo_1_csr_readdata),   //                           .readdata
-	
-	// result fifo
-	.fifo_fpga2hps_result_in_writedata     (fpga2hps_result_writedata),     //     fifo_fpga2hps_result_in.writedata
-	.fifo_fpga2hps_result_in_write         (fpga2hps_result_write),         //                            .write
-	.fifo_fpga2hps_result_in_waitrequest   ( ),   //                            .waitrequest
-	.fifo_fpga2hps_result_in_csr_address   (32'd1),   // fifo_fpga2hps_result_in_csr.address
-	.fifo_fpga2hps_result_in_csr_read      (1'b1),      //                            .read
-	.fifo_fpga2hps_result_in_csr_writedata ( ), //                            .writedata
-	.fifo_fpga2hps_result_in_csr_write     (1'b0),     //                            .write
-	.fifo_fpga2hps_result_in_csr_readdata  (fpga2hps_result_csr_readdata),   //                            .readdata
-   
-
-	// command fifo
-	.fifo_0_out_readdata                  (command_fifo_readdata),                  //                 fifo_0_out.readdata
-	.fifo_0_out_read                      (read_command_fifo),                      //                           .read
-	.fifo_0_out_waitrequest               (),               //                           .waitrequest
-	.fifo_0_out_csr_address               (32'd1),               //             fifo_0_out_csr.address
-	.fifo_0_out_csr_read                  (1'b1),                  //                           .read
-	.fifo_0_out_csr_writedata             (),             //                           .writedata
-	.fifo_0_out_csr_write                 (1'b0),                 //                           .write
-	.fifo_0_out_csr_readdata              (command_fifo_csr_readdata),               //                           .readdata
-	
-	
 	// HPS to FPGA FIFO
 	.fifo_hps_to_fpga_out_readdata      (hps_to_fpga_readdata),      //  fifo_hps_to_fpga_out.readdata
 	.fifo_hps_to_fpga_out_read          (hps_to_fpga_read),          //   out.read
