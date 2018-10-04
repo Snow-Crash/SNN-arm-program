@@ -95,10 +95,22 @@ DATATYPE readFIFO(volatile unsigned int *csrPointer, volatile DATATYPE *readPoin
 {
 	if (block == true)
 	{
-		while(FIFO_EMPTY(csrPointer))
+		
+		if (FIFO_EMPTY(csrPointer))
 		{
+			int counter = 0;
 			printf("fifo is empty, wait \n");
+			while(FIFO_EMPTY(csrPointer))
+			{
+				counter++;
+				if (counter > 500)
+					{
+						printf("time out, read failed\n");
+						return 0;
+					}
+			}
 		}
+
 	}
 
 	DATATYPE data = *(readPointer);
@@ -327,6 +339,7 @@ int main(void)
 			
 				writeFIFO(N, FIFO_write_status_ptr, FIFO_write_ptr, true);
 
+				usleep(1000);
 
 				printf("return %d \n", readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true));
 			}
