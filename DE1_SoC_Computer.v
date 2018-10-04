@@ -367,10 +367,10 @@ wire			[15: 0]	hex3_hex0;
 // assign HEX4 = 7'b1111111;
 // assign HEX5 = 7'b1111111;
 
-HexDigit Digit0(HEX0, hex3_hex0[3:0]);
-HexDigit Digit1(HEX1, hex3_hex0[7:4]);
-HexDigit Digit2(HEX2, hex3_hex0[11:8]);
-//HexDigit Digit3(HEX3, hex3_hex0[15:12]);
+HexDigit Digit0( , hex3_hex0[3:0]);
+HexDigit Digit1( , hex3_hex0[7:4]);
+HexDigit Digit2( , hex3_hex0[11:8]);
+HexDigit Digit3( , hex3_hex0[15:12]);
 
 //=======================================================
 // HPS_to_FPGA FIFO state machine
@@ -406,14 +406,16 @@ reg [7:0] state ;
 reg [3:0] read_cs, read_ns, write_cs, write_ns;
 reg [31:0] buffer /* synthesis preserve */;
 reg hps_to_fpga_read, load_buffer, en_write_fsm, fpga_to_hps_in_write, write_fsm_ready, spike /* synthesis preserve */;
-wire [31:0] hps_to_fpga_out_csr_readdata, fpga_to_hps_in_csr_readdata, fpga_to_hps_in_writedata, hps_to_fpga_readdata /* synthesis keep */;
+wire [31:0] hps_to_fpga_out_csr_readdata, fpga_to_hps_in_csr_readdata, hps_to_fpga_readdata /* synthesis keep */;
+reg [31:0] fpga_to_hps_in_writedata;
 
 
 // test command decode
-reg turn_on_hex_4, turn_on_hex_5, turn_off_hex_4, turn_off_hex_5;
-reg [6:0] hex_4, hex_5;
+reg [5:0] switch_hex;
+reg [9:0] switch_led, led_reg;
+reg [6:0] hex_0_reg, hex_1_reg, hex_2_reg, hex_3_reg, hex_4_reg, hex_5_reg;
 wire [31:0] pio_12, pio34;
-reg write_back_pio, generare_start;
+reg generate_start;
 reg [31:0] pio_mux;
 
 always @(posedge CLOCK_50)
@@ -421,10 +423,6 @@ begin
 	if (load_buffer == 1'b1)
 		buffer <= hps_to_fpga_readdata;
 end
-
-//assign fpga_to_hps_in_writedata = buffer;
-assign fpga_to_hps_in_writedata = (write_back_pio) ? pio_mux : buffer;
-
 
 // read state machine
 always @(posedge CLOCK_50)
@@ -468,6 +466,11 @@ end
 // Controls for FPGA_to_HPS FIFO
 //=======================================================
 
+reg[2:0] write_back_sel;
+reg [31:0] timer;
+reg inc_timer;
+
+
 // write FSM
 always @(posedge CLOCK_50)
 begin
@@ -483,13 +486,11 @@ begin
 	
 	write_fsm_ready = 1'b0;
 	fpga_to_hps_in_write = 1'b0;
-	turn_on_hex_4 = 1'b0;
-	turn_on_hex_5 = 1'b0;
-	turn_off_hex_4 = 1'b0;
-	turn_off_hex_5 = 1'b0;
-	pio_mux = pio_0;
-	generare_start = 1'b0;
-	write_back_pio = 1'b0;
+	switch_hex = 6'd0;
+	generate_start = 1'b0;
+	write_back_sel = 3'd0;
+	inc_timer = 1'b0;
+	switch_led = 10'd0;
 
 	if (write_cs == 0)
 	begin
@@ -504,61 +505,122 @@ begin
 	begin
 		write_ns = 0;
 		fpga_to_hps_in_write = 1'b1;
+		switch_hex[0] = 1'b1;
 
 		// decode command
-		if (buffer == 20)
+		if (buffer == 32'h10000)
 		begin
-			turn_on_hex_4 = 1'b1;
-			write_back_pio = 1'b1;
-			pio_mux = pio_1;
-			generare_start = 1'b1;
+			// generate a start signal
+			generate_start = 1'b1;
+			write_ns = 2;
+			write_back_sel = 1;
+			fpga_to_hps_in_write = 1'b0;
+			switch_hex[1] = 1'b1;
 		end
-		else if (buffer == 21)
+		else if (buffer == 32'h10001)
 		begin
-			write_back_pio = 1'b1;
-			turn_on_hex_5 = 1'b1;
-			pio_mux = pio_2;
+			switch_hex[2] = 1'b1;
+			write_back_sel = 2;
 		end
-		else if (buffer == 22)
+		else if (buffer == 32'h10002)
 		begin
-			turn_off_hex_4 = 1'b1;
-			write_back_pio = 1'b1;
-			pio_mux = pio_3;
+			switch_hex[3] = 1'b1;
+			write_back_sel = 3;
 		end
-		else if  (buffer == 23)
+		else if  (buffer == 32'h10003)
 		begin
-			turn_off_hex_5 = 1'b1;
-			write_back_pio = 1'b1;
-			pio_mux = pio_4;
+			switch_hex[4] = 1'b1;
+			write_back_sel = 4;
 		end
+		else if  (buffer == 32'h10004)
+		begin
+			switch_hex[5] = 1'b1;
+			write_back_sel = 5;
+		end
+	end
+	else if (write_cs == 2)
+	begin
+		write_back_sel = 1;
+		if (timer < 30000)
+		begin
+			write_ns = 2;
+			inc_timer = 1'b1;
+			switch_led[7] = 1'b1;
+		end
+		else
+		begin
+			fpga_to_hps_in_write = 1'b1;
+			write_ns = 0;
+			switch_led[8] = 1'b1;
+		end
+	
 	end
 	else
 		write_ns = 0;
 end
 
 
-assign HEX4 = hex_4;
-assign HEX5 = hex_5;
+always @(posedge CLOCK_50)
+begin
+	if (inc_timer == 1'b1)
+		timer <= timer + 1;
+	else
+		timer <= 0;
+end
+
+
+always @(*)
+begin
+	fpga_to_hps_in_writedata = buffer;
+	if ( write_back_sel == 0)
+		fpga_to_hps_in_writedata = buffer;
+	else if (write_back_sel == 1)
+		fpga_to_hps_in_writedata = timer;
+	else if (write_back_sel == 2)
+		fpga_to_hps_in_writedata = pio_0;
+	else if (write_back_sel == 3)
+		fpga_to_hps_in_writedata = pio_1;
+	else if (write_back_sel == 4)
+		fpga_to_hps_in_writedata = pio_2;
+	else if (write_back_sel == 5)
+		fpga_to_hps_in_writedata = pio_3;
+	else if (write_back_sel == 6)
+		fpga_to_hps_in_writedata = pio_4;
+end
+
+assign HEX0 = hex_0_reg;
+assign HEX1 = hex_1_reg;
+assign HEX2 = hex_2_reg;
+assign HEX3 = hex_3_reg;
+assign HEX4 = hex_4_reg;
+assign HEX5 = hex_5_reg;
 
 always @(posedge CLOCK_50)
 begin
-	if (turn_on_hex_4)
-		hex_4 <= 7'b0000000;
-	
-	if (turn_off_hex_4)
-		hex_4 <= 7'b1111111;
+	if (switch_hex[0])
+		hex_0_reg <= ~hex_0_reg;
 
-	if (turn_on_hex_5)
-		hex_5 <= 7'b0000000;
+	if (switch_hex[1])
+		hex_1_reg <= ~hex_1_reg;
+
+	if (switch_hex[2])
+		hex_2_reg <= ~hex_2_reg;
+
+	if (switch_hex[3])
+		hex_3_reg <= ~hex_3_reg;
+
+	if (switch_hex[4])
+		hex_4_reg <= ~hex_4_reg;
+
+	if (switch_hex[5])
+		hex_5_reg <= ~hex_5_reg;
 	
-	if (turn_off_hex_5)
-		hex_5 <= 7'b1111111;
 end
 
 // gnerate start signal
 
 reg [3:0] start_cs, start_ns;
-reg start, start_reg;
+reg start;
 
 always @(posedge CLOCK_50)
 begin
@@ -571,14 +633,16 @@ end
 
 always @(*)
 begin
+	start = 1'b0;
+
 	if (start_cs == 0)
 	begin
-		if (generare_start == 1'b1)
+		if (generate_start == 1'b1)
 			start_ns = 1;
 		else
 			start_ns = 0;		
 	end
-	else if (start_ns == 1)
+	else if (start_cs == 1)
 	begin
 
 		start = 1'b1;
@@ -586,18 +650,20 @@ begin
 	end
 	else
 		start_ns = 0;
-	
 end
 
 always @(posedge CLOCK_50)
 begin
-
 	if (start == 1'b1)
-		start_reg = 1'b1;
+		led_reg[9] = ~led_reg[9];
+	
+	if (switch_led[8] == 1'b1)
+		led_reg[8] = ~led_reg[8];
 
 end
 
-assign HEX3 = start_reg;
+assign LEDR = led_reg;
+
 
 wire [31:0] pio_0, pio_1, pio_2, pio_3, pio_4 /* synthesis keep */;
 
