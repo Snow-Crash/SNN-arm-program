@@ -205,98 +205,132 @@ int main(void)
 	{
 
 		printf("select mode(1: loop back, 2: fsm test): \n");
+		printf("1: loop back \n");
+		printf("2: fsm test \n");
 		scanf("%d", &N);
 
 		if (N == 1)
 		{
-			printf("Loop back mode:\n");
 
+			while(1)
+			{
 
-			printf("\n\r enter N=");
-			scanf("%d", &N);
-			if (N>500) N = 1 ;
-			if (N<1) N = 1 ;
-			
-			// generate a sequence
-			for (i=0; i<N; i++){
-				data[i] = i + 1;
-			}
-			
-			// print fill levels
-			printf("=====================\n\r");
-			printf("fill levels before interleaved write\n\r");
-			printf("write=%d read=%d\n\r", getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr));
-			
-			
-			// ====================================
-			// send array to FIFO and read every time
-			// ====================================
-			for (i=0; i<N; i++){
-				// wait for a slot then
-				// do the actual FIFO write
-				writeFIFO(data[i], FIFO_write_status_ptr, FIFO_write_ptr, true);
-				// now read it back
+				printf("Loop back mode:\n");
+				printf("88888: quit \n");
+				printf("\n\r enter N=");
+				scanf("%d", &N);
+
+				if (N == 88888)
+					break;
+
+				if (N>500) N = 1 ;
+				if (N<1) N = 1 ;
+				
+				// generate a sequence
+				for (i=0; i<N; i++){
+					data[i] = i + 1;
+				}
+				
+				// print fill levels
+				printf("=====================\n\r");
+				printf("fill levels before interleaved write\n\r");
+				printf("write=%d read=%d\n\r", getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr));
+				
+				
+				// ====================================
+				// send array to FIFO and read every time
+				// ====================================
+				for (i=0; i<N; i++){
+					// wait for a slot then
+					// do the actual FIFO write
+					writeFIFO(data[i], FIFO_write_status_ptr, FIFO_write_ptr, true);
+					// now read it back
+					while (!FIFO_EMPTY(FIFO_read_status_ptr)) {
+					//while(!isFIFOEmpty(FIFO_read_status_ptr)){
+						printf("return=%d %d %d\n\r", readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true), getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr)) ; 
+					}	
+				}
+				if(!FIFO_EMPTY(FIFO_read_status_ptr)) printf("delayed last read\n\r");
+				// and one last read because
+				// for this example occasionally there is one left on the loopback
+
 				while (!FIFO_EMPTY(FIFO_read_status_ptr)) {
-				//while(!isFIFOEmpty(FIFO_read_status_ptr)){
+					printf("return=%d %d %d\n\r", readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true), getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr)) ;
+				}
+				
+				// finish timing the transfer
+				
+				// ======================================
+				// send array to FIFO and read entire block
+				// ======================================
+				// print fill levels
+				printf("=====================\n\r");
+				printf("fill levels before block write\n\r");
+				printf("write=%d read=%d\n\r", getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr));
+				
+				// send array to FIFO and read block
+				for (i=0; i<N; i++){
+					// wait for a slot
+					writeFIFO(data[i], FIFO_write_status_ptr, FIFO_write_ptr, true);
+				}
+				
+				printf("fill levels before block read\n\r");
+				printf("write=%d read=%d\n\r", getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr));
+				
+				// get array from FIFO while there is data in the FIFO
+				while (!FIFO_EMPTY(FIFO_read_status_ptr)) {
+					// print array from FIFO read port
 					printf("return=%d %d %d\n\r", readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true), getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr)) ; 
-				}	
-			}
-			if(!FIFO_EMPTY(FIFO_read_status_ptr)) printf("delayed last read\n\r");
-			// and one last read because
-			// for this example occasionally there is one left on the loopback
+				}
+				
+				// FIFO fill levels
+				printf("fill levels after block read\n\r");
+				printf("write=%d read=%d\n\r", getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr));
+				printf("=====================\n\r");
 
-			while (!FIFO_EMPTY(FIFO_read_status_ptr)) {
-				printf("return=%d %d %d\n\r", readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true), getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr)) ;
 			}
-			
-			// finish timing the transfer
-			
-			// ======================================
-			// send array to FIFO and read entire block
-			// ======================================
-			// print fill levels
-			printf("=====================\n\r");
-			printf("fill levels before block write\n\r");
-			printf("write=%d read=%d\n\r", getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr));
-			
-			// send array to FIFO and read block
-			for (i=0; i<N; i++){
-				// wait for a slot
-				writeFIFO(data[i], FIFO_write_status_ptr, FIFO_write_ptr, true);
-			}
-			
-			printf("fill levels before block read\n\r");
-			printf("write=%d read=%d\n\r", getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr));
-			
-			// get array from FIFO while there is data in the FIFO
-			while (!FIFO_EMPTY(FIFO_read_status_ptr)) {
-				// print array from FIFO read port
-				printf("return=%d %d %d\n\r", readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true), getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr)) ; 
-			}
-			
-			// FIFO fill levels
-			printf("fill levels after block read\n\r");
-			printf("write=%d read=%d\n\r", getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr));
-		printf("=====================\n\r");
 
 		}
 		else if (N == 2)
 		{
+
+
+			while(1)
+			{
+				printf("input command: \n");
+				printf("<65536: loop back \n");
+				printf("65536: switch hex 1 and  test start signal generation and spike write back \n");
+				printf("65537: switch hex 2 and return pio_0 \n");
+				printf("65538: switch hex 3 and return pio_1 \n");
+				printf("65539: switch hex 4 and return pio_2 \n");
+				printf("65540: switch hex 5 and return pio_3 \n");
+				printf("88888: quit\n");
+
+				scanf("%d", &N);
+
+				if (N == 88888)
+					break;
+				
+				printf("test command decode and write back\n");
+				printf("pio 0 : 1 \n");
+				printf("pio 1 : 2 \n");
+				printf("pio 2 : 3 \n");
+				printf("pio 3 : 4 \n");
+				printf("pio 4 : 5 \n");
+				*pio_0_ptr = 1;
+				*pio_1_ptr = 2;
+				*pio_2_ptr = 3;
+				*pio_3_ptr = 4;
+				*pio_4_ptr = 5;
+
+				printf("send %d \n", N);
 			
-			printf("test command decode and write back\n");
-			printf("set pio 0 to pio 4 to 1-5\n");
-			*pio_0_ptr = 1;
-			*pio_1_ptr = 2;
-			*pio_2_ptr = 3;
-			*pio_3_ptr = 4;
-			*pio_4_ptr = 5;
+				writeFIFO(N, FIFO_write_status_ptr, FIFO_write_ptr, true);
 
-			printf("\n\r input command: 20, 21, 2, 23\n");
-			scanf("%d", &N);
-		
-			writeFIFO(N, FIFO_write_status_ptr, FIFO_write_ptr, true);
 
-			printf("return %d", readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true));
+				printf("return %d \n", readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true));
+			}
+
 
 		}
 
