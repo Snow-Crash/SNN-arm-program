@@ -24,6 +24,11 @@
 #include "socal/alt_gpio.h"
 
 
+#define bufSize 1024
+#define WINDOW 100
+#define INPUT_NUMBER 150
+#define NEURON_NUMBER 50
+
 // main bus; FIFO write address
 #define FIFO_BASE            0xC0000000
 #define FIFO_SPAN            0x00001000
@@ -115,6 +120,45 @@ DATATYPE readFIFO(volatile unsigned int *csrPointer, volatile DATATYPE *readPoin
 
 	DATATYPE data = *(readPointer);
 	return data;
+}
+
+// set a bit to 1
+void setBit(unsigned int* val, int index)
+{
+	*val |= 1UL << index;
+}
+
+
+void readFile(char* filename, int spike_array[WINDOW][INPUT_NUMBER])
+{
+	FILE *fp;
+	char str[1000];
+	//char* filename = "D:/de1/csvread/layer_2_class_0_sample_1.csv";
+
+
+	fp = fopen(filename, "r");
+	if (fp == NULL){
+		printf("Could not open file %s", filename);
+		return;
+	}
+
+	int row = 0;
+	while (fgets(str, 1000, fp) != NULL)
+	{
+
+		int col = 0;
+		int idx = 0;
+
+		while (str[idx] != '\0')
+		{
+			if (str[idx] == '1')
+				spike_array[row][col] = 1;
+			if (str[idx] == '1' || str[idx] == '0')
+				col++;
+			idx++;
+		}
+		row++;
+	}
 }
 	
 int main(void)
@@ -220,6 +264,15 @@ int main(void)
 		printf("1: loop back \n");
 		printf("2: fsm test \n");
 		scanf("%d", &N);
+
+
+		// control
+		// 0 - 65535: loop back, fpga returns the input value
+		// 65536: generate a statr signal, return 0 and 0xff000000
+		// 65537: return value of pio 0
+		// 65538: return value of pio 1
+		// 65539: return value of pio 2
+		// 65540: retuen value of pio 3
 
 		if (N == 1)
 		{
@@ -341,10 +394,106 @@ int main(void)
 
 				usleep(1000);
 
-				printf("return %d \n", readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true));
+				while (!FIFO_EMPTY(FIFO_read_status_ptr))
+				{
+					int unsigned return_value =  readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true);
+					printf("return HEX: %x, DEC: %d\n", return_value, return_value);
+				}
+					
 			}
 
 
+		}
+		else if (N == 3)
+		{
+			// creata an array to store spikes in current window, initialized as 0
+			int spike_array[WINDOW][INPUT_NUMBER];
+			int neuron_spike_count[NEURON_NUMBER] = {0};
+			memset(spike_array, 0, sizeof(spike_array[0][0]) * 100 * 100);
+			//  index 0 corresponds to 0th axon, 1 corresponds to 1st neuron.
+
+
+			// read file
+			char* filename = "D:/de1/csvread/layer_2_class_0_sample_1.csv";
+			readFile(filename, spike_array);
+
+
+			unsigned int pio_0_value = 0;
+			unsigned int pio_1_value = 0;
+			unsigned int pio_2_value = 0;
+			unsigned int pio_3_value = 0;
+			unsigned int pio_4_value = 0;
+
+			// loop 100 ticks
+			int row  = 0;
+			for (row = 0 ; i != WINDOW; i++)
+			{
+				// convert binary to unsigned values
+				int col = 0;
+				for (col = 0; col != INPUT_NUMBER; col++)
+				{
+
+					if (spike_array[row][col] == 1)
+					{
+						if (col< 32)
+						// set pio 0
+						{
+							setBit(&pio_0_value, col);
+						}
+						else if (col > 31 && col < 64)
+						// set pio 2
+						{
+							setBit(&pio_1_value, col-32);
+						}
+						else if (col > 63 && col < 96)
+						// set pio 3
+						{
+							setBit(&pio_2_value, col-64);
+						}
+						else if (col > 95 && col < 128)
+						// set pio 4
+						{
+							setBit(&pio_3_value, col-96);
+						}
+						else if(col > 127)
+						// set pio 5
+						{
+							setBit(&pio_4_value, col-128);
+						}
+					}
+				}
+
+				// set arm output
+				*pio_0_ptr = pio_0_value;
+				*pio_1_ptr = pio_1_value;
+				*pio_2_ptr = pio_2_value;
+				*pio_3_ptr = pio_3_value;
+				*pio_4_ptr = pio_4_value;
+				
+				// wait a while
+				usleep(100);
+
+				// send command, 0x10000 generate a start signal
+				writeFIFO(0x10000, FIFO_write_status_ptr, FIFO_write_ptr, true);
+
+				// wait 100 ms
+				usleep(1000*100);
+
+				// read fifo until its empty
+				while (!FIFO_EMPTY(FIFO_read_status_ptr)) 
+				{
+					unsigned int result = readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true);
+					unsigned int neuron_index = result & 0xff;
+					neuron_spike_count[neuron_index]++;
+				}	
+
+			}
+
+
+			// pio4, pio3, pio2, pio1, pio0
+
+
+				
 		}
 
 
