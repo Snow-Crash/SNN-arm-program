@@ -405,7 +405,7 @@ reg [7:0] state ;
 
 reg [3:0] read_cs, read_ns, write_cs, write_ns;
 reg [31:0] buffer /* synthesis preserve */;
-reg hps_to_fpga_read, load_buffer, en_write_fsm, fpga_to_hps_in_write, write_fsm_ready, spike /* synthesis preserve */;
+reg hps_to_fpga_read, load_buffer, en_write_fsm, fpga_to_hps_in_write, write_fsm_ready, fpga_to_hps_in_write_mux /* synthesis preserve */;
 wire [31:0] hps_to_fpga_out_csr_readdata, fpga_to_hps_in_csr_readdata, hps_to_fpga_readdata /* synthesis keep */;
 reg [31:0] fpga_to_hps_in_writedata;
 
@@ -470,6 +470,14 @@ reg[2:0] write_back_sel;
 reg [31:0] timer;
 reg inc_timer;
 
+wire [31:0] pio_0, pio_1, pio_2, pio_3, pio_4 /* synthesis keep */;
+wire [3:0] test_axon;
+wire [31:0] spike_aer;
+
+wire [32*5-1:0] input_spike_array;
+wire neuron_spike;
+reg config_mem_wr; // no use, just in order to guarantee config memory can be sinthesized
+
 
 // write FSM
 always @(posedge CLOCK_50)
@@ -491,6 +499,7 @@ begin
 	write_back_sel = 3'd0;
 	inc_timer = 1'b0;
 	switch_led = 10'd0;
+	config_mem_wr = 1'b0;
 
 	if (write_cs == 0)
 	begin
@@ -504,51 +513,68 @@ begin
 	else if (write_cs == 1)
 	begin
 		write_ns = 0;
-		fpga_to_hps_in_write = 1'b1;
+		
 		switch_hex[0] = 1'b1;
 
 		// decode command
-		if (buffer == 32'h10000)
+		if (buffer < 32'h10000)
+		begin
+			fpga_to_hps_in_write = 1'b1;
+			write_back_sel = 0;
+		end
+		else if (buffer == 32'h10000)
 		begin
 			// generate a start signal
-			generate_start = 1'b1;
-			write_ns = 2;
-			write_back_sel = 1;
-			fpga_to_hps_in_write = 1'b0;
-			switch_hex[1] = 1'b1;
+			generate_start = 1'b1;				// generate a start signal
+			write_ns = 2;						// transit to wait state
+			write_back_sel = 1;					// select timer
+			fpga_to_hps_in_write = 1'b1;		// write back timer value
+			switch_hex[1] = 1'b1;				// switch hex 1
 		end
 		else if (buffer == 32'h10001)
 		begin
-			switch_hex[2] = 1'b1;
-			write_back_sel = 2;
+			
+			switch_hex[2] = 1'b1;		
+			write_back_sel = 2;			// select pio 0
+			fpga_to_hps_in_write = 1'b1;
 		end
 		else if (buffer == 32'h10002)
 		begin
-			switch_hex[3] = 1'b1;
-			write_back_sel = 3;
+			switch_hex[3] = 1'b1;		
+			write_back_sel = 3;			// select pio 1
+			fpga_to_hps_in_write = 1'b1;
 		end
 		else if  (buffer == 32'h10003)
 		begin
 			switch_hex[4] = 1'b1;
-			write_back_sel = 4;
+			write_back_sel = 4;			// select pio 2
+			fpga_to_hps_in_write = 1'b1;
 		end
 		else if  (buffer == 32'h10004)
 		begin
 			switch_hex[5] = 1'b1;
-			write_back_sel = 5;
+			write_back_sel = 5;			// select pio 3
+			fpga_to_hps_in_write = 1'b1;
 		end
+		else if (buffer == 32'h1000f)
+			config_mem_wr = 1'b1;
 	end
 	else if (write_cs == 2)
 	begin
-		write_back_sel = 1;
+		
 		if (timer < 30000)
 		begin
+			// wait for the neuron to finish computation
+			// neuron may send aer at this period
+			write_back_sel = 8;
 			write_ns = 2;
 			inc_timer = 1'b1;
 			switch_led[7] = 1'b1;
 		end
 		else
 		begin
+			// when time is up, stop current tick, write back a finish message(0xffff_0000)
+			write_back_sel = 7;
 			fpga_to_hps_in_write = 1'b1;
 			write_ns = 0;
 			switch_led[8] = 1'b1;
@@ -558,6 +584,7 @@ begin
 	else
 		write_ns = 0;
 end
+
 
 
 always @(posedge CLOCK_50)
@@ -571,6 +598,13 @@ end
 
 always @(*)
 begin
+	
+	
+	if (write_back_sel == 8)
+		fpga_to_hps_in_write_mux = neuron_spike;
+	else
+		fpga_to_hps_in_write_mux = fpga_to_hps_in_write;
+	
 	fpga_to_hps_in_writedata = buffer;
 	if ( write_back_sel == 0)
 		fpga_to_hps_in_writedata = buffer;
@@ -586,6 +620,10 @@ begin
 		fpga_to_hps_in_writedata = pio_3;
 	else if (write_back_sel == 6)
 		fpga_to_hps_in_writedata = pio_4;
+	else if (write_back_sel == 7)
+		fpga_to_hps_in_writedata = 32'hff00_0000;
+	else if (write_back_sel == 8)
+		fpga_to_hps_in_writedata = spike_aer;
 end
 
 assign HEX0 = hex_0_reg;
@@ -618,7 +656,6 @@ begin
 end
 
 // gnerate start signal
-
 reg [3:0] start_cs, start_ns;
 reg start;
 
@@ -665,7 +702,25 @@ end
 assign LEDR = led_reg;
 
 
-wire [31:0] pio_0, pio_1, pio_2, pio_3, pio_4 /* synthesis keep */;
+
+assign input_spike_array = {pio_4, pio_3, pio_2, pio_1, pio_0};
+assign test_axon = input_spike_array[3:0];
+
+
+
+
+Neuron the_neuron
+(
+.clk(CLOCK_50), 
+.rst_n(1'b1), 
+.SpikePacket(spike_aer), 
+.outSpike(neuron_spike), 
+.start(start), 
+.inSpike(test_axon), 
+.packet_write_req(), 
+.out_1bit(), 
+.config_mem_wr(config_mem_wr)
+);
 
 //=======================================================
 //  Structural coding
@@ -711,7 +766,7 @@ Computer_System The_System (
 	
 	// FPGA to HPS FIFO
 	.fifo_fpga_to_hps_in_writedata      (fpga_to_hps_in_writedata),      // fifo_fpga_to_hps_in.writedata
-	.fifo_fpga_to_hps_in_write          (fpga_to_hps_in_write),          //                     .write
+	.fifo_fpga_to_hps_in_write          (fpga_to_hps_in_write_mux),          //                     .write
 	.fifo_fpga_to_hps_in_csr_address    (32'd1), //(fpga_to_hps_in_csr_address),    //  fifo_fpga_to_hps_in_csr.address
 	.fifo_fpga_to_hps_in_csr_read       (1'b1), //(fpga_to_hps_in_csr_read),       //                         .read
 	.fifo_fpga_to_hps_in_csr_writedata  (),  //                         .writedata
