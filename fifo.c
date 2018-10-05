@@ -28,6 +28,7 @@
 #define WINDOW 100
 #define INPUT_NUMBER 150
 #define NEURON_NUMBER 50
+#define TEST_CASE_NUMBER 1350
 
 // main bus; FIFO write address
 #define FIFO_BASE            0xC0000000
@@ -158,6 +159,47 @@ void readFile(char* filename, int spike_array[WINDOW][INPUT_NUMBER])
 			idx++;
 		}
 		row++;
+	}
+}
+
+void readRateFile(char* filename, float rate_array[TEST_CASE_NUMBER][INPUT_NUMBER])
+{
+	FILE *fp;
+	//char str[1000];
+	//char* filename = "D:/de1/csvread/layer_2_class_0_sample_1.csv";
+
+	//char char_spike_array[INPUT_NUMBER] = { "0" };
+
+	fp = fopen(filename, "r");
+	if (fp == NULL){
+		printf("Could not open file %s", filename);
+		return;
+	}
+
+	int i = 0;
+	int j = 0;
+	float rate;
+	for (i = 0; i < TEST_CASE_NUMBER; i++)
+	{
+		for (j = 0; j < INPUT_NUMBER; j++)
+		{
+			fscanf(fp, "%f", &rate);
+			//printf("%.15f ", rate);
+			rate_array[i][j] = rate;
+		}
+		printf("\n");
+	}
+}
+
+
+void generateSpikeArray(int test_case_idx, float rate_array[TEST_CASE_NUMBER][INPUT_NUMBER], int spike_array[INPUT_NUMBER])
+{
+	float x = (float)rand() / (float)(RAND_MAX);
+	int idx = 0;
+	for (idx = 0; idx != INPUT_NUMBER; idx++)
+	{
+		if (x < rate_array[test_case_idx][idx])
+			spike_array[idx] = 1;
 	}
 }
 	
@@ -409,7 +451,7 @@ int main(void)
 			// creata an array to store spikes in current window, initialized as 0
 			int spike_array[WINDOW][INPUT_NUMBER];
 			int neuron_spike_count[NEURON_NUMBER] = {0};
-			memset(spike_array, 0, sizeof(spike_array[0][0]) * 100 * 100);
+			memset(spike_array, 0, sizeof(spike_array[0][0]) * WINDOW * INPUT_NUMBER);
 			//  index 0 corresponds to 0th axon, 1 corresponds to 1st neuron.
 
 
@@ -490,12 +532,101 @@ int main(void)
 			}
 
 
-			// pio4, pio3, pio2, pio1, pio0
-
-
-				
+			// pio4, pio3, pio2, pio1, pio0		
 		}
+		else if (N == 4)
+		{
+	
+			// a tabe to store the spike number of each neuron
+			int neuron_spike_count[NEURON_NUMBER] = {0};
 
+			// rate of each input
+			float rate_mat[TEST_CASE_NUMBER][INPUT_NUMBER];
+
+			memset(rate_mat, 0, sizeof(rate_mat[0][0]) * TEST_CASE_NUMBER * INPUT_NUMBER);
+
+			char* filename = "D:/de1/test/fifo_test_simplified/arm-program/rates.txt";
+
+			readRateFile(filename, rate_mat);
+
+			//select a test case
+			int test_case_idx = 1;
+
+			// loop 100 ticks
+			int i = 0;
+
+			for (i = 0; i != WINDOW; i++)
+			{
+				int spike_array[INPUT_NUMBER] = {0};
+
+				// generate spikes
+				 generateSpikeArray(test_case_idx, rate_mat, spike_array);
+
+				// initialize pio values to 0
+				unsigned int pio_0_value = 0;
+				unsigned int pio_1_value = 0;
+				unsigned int pio_2_value = 0;
+				unsigned int pio_3_value = 0;
+				unsigned int pio_4_value = 0;
+
+				// set each bit of pio
+
+				int axon_id = 0;
+
+				for (axon_id = 0; axon_id != INPUT_NUMBER; axon_id++)
+				{
+					if (spike_array[axon_id] == 1)
+					{
+						if (axon_id< 32)
+						// set pio 0
+						{
+							setBit(&pio_0_value, axon_id);
+						}
+						else if (axon_id > 31 && axon_id < 64)
+						// set pio 2
+						{
+							setBit(&pio_1_value, axon_id-32);
+						}
+						else if (axon_id > 63 && axon_id < 96)
+						// set pio 3
+						{
+							setBit(&pio_2_value, axon_id-64);
+						}
+						else if (axon_id > 95 && axon_id < 128)
+						// set pio 4
+						{
+							setBit(&pio_3_value, axon_id-96);
+						}
+					}
+				}
+
+				// set pio value
+				*pio_0_ptr = pio_0_value;
+				*pio_1_ptr = pio_1_value;
+				*pio_2_ptr = pio_2_value;
+				*pio_3_ptr = pio_3_value;
+				*pio_4_ptr = pio_4_value;
+
+				// wait a while
+				usleep(100);
+
+				// send command, 0x10000 generate a start signal
+				writeFIFO(0x10000, FIFO_write_status_ptr, FIFO_write_ptr, true);
+
+				// wait 100 ms
+				usleep(1000*100);
+			}
+
+			// after loop 100 times, read fifo until its empty
+				while (!FIFO_EMPTY(FIFO_read_status_ptr)) 
+				{
+					unsigned int result = readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true);
+					unsigned int neuron_index = result & 0xff;
+					neuron_spike_count[neuron_index]++;
+				}	
+
+
+		}
 
 
 		// printf("test state machines\n");
