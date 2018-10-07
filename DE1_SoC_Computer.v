@@ -411,8 +411,8 @@ reg [31:0] fpga_to_hps_in_writedata;
 
 
 // test command decode
-reg [5:0] switch_hex;
-reg [9:0] switch_led, led_reg;
+reg [5:0] switch_hex /* synthesis noprune */;
+reg [9:0] switch_led, led_reg /* synthesis noprune */;
 reg [6:0] hex_0_reg, hex_1_reg, hex_2_reg, hex_3_reg, hex_4_reg, hex_5_reg;
 wire [31:0] pio_12, pio34;
 reg generate_start;
@@ -466,16 +466,16 @@ end
 // Controls for FPGA_to_HPS FIFO
 //=======================================================
 
-reg[2:0] write_back_sel;
+reg[3:0] write_back_sel /* synthesis noprune */;
 reg [31:0] timer;
 reg inc_timer;
 
 wire [31:0] pio_0, pio_1, pio_2, pio_3, pio_4 /* synthesis keep */;
 wire [3:0] test_axon;
-wire [31:0] spike_aer;
+wire [31:0] spike_aer /* synthesis keep */;
 
-wire [32*5-1:0] input_spike_array;
-wire neuron_spike;
+wire [32*4-1:0] input_spike_array;
+wire neuron_spike /* synthesis keep */;
 reg config_mem_wr; // no use, just in order to guarantee config memory can be sinthesized
 
 
@@ -496,7 +496,7 @@ begin
 	fpga_to_hps_in_write = 1'b0;
 	switch_hex = 6'd0;
 	generate_start = 1'b0;
-	write_back_sel = 3'd0;
+	write_back_sel = 4'd0;
 	inc_timer = 1'b0;
 	switch_led = 10'd0;
 	config_mem_wr = 1'b0;
@@ -562,7 +562,7 @@ begin
 	else if (write_cs == 2)
 	begin
 		
-		if (timer < 30000)
+		if (timer < 10000)
 		begin
 			// wait for the neuron to finish computation
 			// neuron may send aer at this period
@@ -703,9 +703,9 @@ assign LEDR = led_reg;
 
 
 
-assign input_spike_array = {pio_4, pio_3, pio_2, pio_1, pio_0};
+assign input_spike_array = {pio_3, pio_2, pio_1, pio_0};
 assign test_axon = input_spike_array[3:0];
-
+assign pio_4 = spike_aer;
 
 
 
@@ -716,7 +716,7 @@ Neuron the_neuron
 .SpikePacket(spike_aer), 
 .outSpike(neuron_spike), 
 .start(start), 
-.inSpike(test_axon), 
+.inSpike(input_spike_array), 
 .packet_write_req(), 
 .out_1bit(), 
 .config_mem_wr(config_mem_wr)
