@@ -26,7 +26,7 @@
 
 #define bufSize 1024
 #define WINDOW 100
-#define INPUT_NUMBER 150
+#define INPUT_NUMBER 128
 #define NEURON_NUMBER 50
 #define TEST_CASE_NUMBER 1350
 
@@ -139,7 +139,7 @@ void readFile(char* filename, int spike_array[WINDOW][INPUT_NUMBER])
 
 	fp = fopen(filename, "r");
 	if (fp == NULL){
-		printf("Could not open file %s", filename);
+		printf("Could not open file %s ", filename);
 		return;
 	}
 
@@ -172,7 +172,7 @@ void readRateFile(char* filename, float rate_array[TEST_CASE_NUMBER][INPUT_NUMBE
 
 	fp = fopen(filename, "r");
 	if (fp == NULL){
-		printf("Could not open file %s", filename);
+		printf("Could not open file %s ", filename);
 		return;
 	}
 
@@ -187,7 +187,7 @@ void readRateFile(char* filename, float rate_array[TEST_CASE_NUMBER][INPUT_NUMBE
 			//printf("%.15f ", rate);
 			rate_array[i][j] = rate;
 		}
-		printf("\n");
+		// printf("\n");
 	}
 }
 
@@ -545,12 +545,12 @@ int main(void)
 
 			memset(rate_mat, 0, sizeof(rate_mat[0][0]) * TEST_CASE_NUMBER * INPUT_NUMBER);
 
-			char* filename = "D:/de1/test/fifo_test_simplified/arm-program/rates.txt";
+			char* filename = "./rates.txt";
 
 			readRateFile(filename, rate_mat);
 
 			//select a test case
-			int test_case_idx = 1;
+			int test_case_idx = 100;
 
 			// loop 100 ticks
 			int i = 0;
@@ -558,6 +558,8 @@ int main(void)
 			for (i = 0; i != WINDOW; i++)
 			{
 				int spike_array[INPUT_NUMBER] = {0};
+
+				printf("tick %d \n", i);
 
 				// generate spikes
 				 generateSpikeArray(test_case_idx, rate_mat, spike_array);
@@ -600,6 +602,14 @@ int main(void)
 					}
 				}
 
+				int j = 0;
+				for(j = 0; j != NEURON_NUMBER; j++)
+				{
+					printf("%d", spike_array[j]);
+					
+				}
+				printf("\n");
+
 				// set pio value
 				*pio_0_ptr = pio_0_value;
 				*pio_1_ptr = pio_1_value;
@@ -613,17 +623,48 @@ int main(void)
 				// send command, 0x10000 generate a start signal
 				writeFIFO(0x10000, FIFO_write_status_ptr, FIFO_write_ptr, true);
 
-				// wait 100 ms
-				usleep(1000*100);
-			}
+				// wait 10 ms
+				usleep(1000*10);
 
-			// after loop 100 times, read fifo until its empty
+				// after loop 100 times, read fifo until its empty
 				while (!FIFO_EMPTY(FIFO_read_status_ptr)) 
 				{
 					unsigned int result = readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true);
-					unsigned int neuron_index = result & 0xff;
-					neuron_spike_count[neuron_index]++;
-				}	
+					if (result != 0xff000000)
+					{
+						if ((result & 0xfe000000) == 0xfe000000)
+						{
+							unsigned int neuron_index = result & 0x000000ff;
+							neuron_spike_count[neuron_index]++;
+							printf("spike neuron: %d \n", neuron_index);
+						}
+					}
+					usleep(50);
+				}
+			}
+
+			// find the neuron which fires most frequently
+			int max = 0;
+			int idx = 0;
+			int result_idx = 0;
+			for (idx = 0; idx != NEURON_NUMBER; idx++)
+			{
+				if (neuron_spike_count[idx] > max)
+				{
+					max = neuron_spike_count[idx];
+					result_idx = idx;
+					
+				}
+				
+				printf("spike count");
+				printf("%d,", neuron_spike_count[idx]);
+			}
+
+			printf("input id %d, result %d \n", test_case_idx/3, result_idx );
+
+
+
+
 
 
 		}
