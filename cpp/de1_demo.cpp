@@ -208,7 +208,8 @@ void generate_Spike_Array( vector<float>& rate_array, vector<int> & spike_array)
 }
 
 
-void doInference(int rate_line_number, int window_size, vector<int>& spike_array, vector<int>& neuron_spike_count)
+void doInference(int window_size, vector<float>& rate_array, vector<int>& neuron_spike_count,
+vector<int>& spike_neuron_idx, vector<int>& spike_time, bool record_spike_time)
 {
 
 	// the light weight buss base
@@ -280,8 +281,13 @@ void doInference(int rate_line_number, int window_size, vector<int>& spike_array
 	pio_4_ptr = (unsigned int *)(h2p_lw_virtual_base + PIO_4_BASE);
 
 
+	int tick = 0;
+
 	for (int i = 0; i != window_size; i++)
 	{
+
+		vector<int> spike_array(INPUT_NUMBER, 0);
+		generate_Spike_Array(rate_array, spike_array);
 
 		printf("tick %d \n", i);
 
@@ -359,10 +365,18 @@ void doInference(int rate_line_number, int window_size, vector<int>& spike_array
 					unsigned int neuron_index = result & 0x000000ff;
 					neuron_spike_count[neuron_index]++;
 					printf("spike neuron: %d \n", neuron_index);
+
+
+					if (record_spike_time == true)
+					{
+						spike_neuron_idx.push_back(neuron_index);
+						spike_time.push_back(tick);
+					}
 				}
 			}
 			usleep(50);
 		}
+
 	}
 
 	// find the neuron which fires most frequently
@@ -378,9 +392,9 @@ void doInference(int rate_line_number, int window_size, vector<int>& spike_array
 			
 		}
 		
-		printf("spike count");
-		printf("%d,", neuron_spike_count[idx]);
+		printf("spike count: %d ", neuron_spike_count[idx]);
 	}
+
 
 
 	// if( munmap( h2p_virtual_base, HW_REGS_SPAN ) != 0 ) {
@@ -390,6 +404,43 @@ void doInference(int rate_line_number, int window_size, vector<int>& spike_array
 	// }
 
 	close( fd );
+
+}
+
+void doInferenceWrapper(int class_index)
+{
+	//printf("select class id \n");
+
+	//scanf("%d", &class_index);
+	
+	// a tabe to store the spike number of each neuron
+	vector<int> neuron_spike_count(NEURON_NUMBER, 0);
+
+	// rate of each input
+
+	string filename = "./rates.txt";
+	vector<vector<float> > rate_mat;
+	read_rate_file(filename, rate_mat);
+
+	//select a test case
+	int rate_line_number = 3*class_index + rand() % 3;
+
+	//generate_Spike_Array(rate_mat[rate_line_number], spike_array);
+
+	vector<int> spike_neuron_idx;
+	vector<int> spike_time;
+
+	doInference(100, rate_mat[rate_line_number], neuron_spike_count, spike_neuron_idx,
+	spike_time, true);
+
+	// write to txt file
+	ofstream myfile;
+	myfile.open ("spike_record.txt");
+	for (unsigned int i = 0; i != spike_neuron_idx.size(); i++)
+	{
+		myfile << spike_neuron_idx[i] << "," << spike_time[i] << "\n";
+	}
+	myfile.close();
 
 }
 
@@ -506,40 +557,20 @@ int fsmTest()
 }
 
 
-
-void demoEvaluate()
-{
-
-}
-
-	
-int main(void)
+int loopBack()
 {
 	// the light weight buss base
 	void *h2p_lw_virtual_base;
-	// HPS_to_FPGA FIFO status address = 0
 	volatile unsigned int * FIFO_write_status_ptr = NULL ;
 	volatile unsigned int * FIFO_read_status_ptr = NULL ;
 
 	// HPS_to_FPGA FIFO write address
-	// main bus addess 0x0000_0000
 	void *h2p_virtual_base;
 	volatile unsigned int * FIFO_write_ptr = NULL ;
 	volatile unsigned int * FIFO_read_ptr = NULL ;
 
-	// volatile unsigned int * pio_0_ptr = NULL;
-	// volatile unsigned int * pio_1_ptr = NULL;
-	// volatile unsigned int * pio_2_ptr = NULL;
-	// volatile unsigned int * pio_3_ptr = NULL;
-	// volatile unsigned int * pio_4_ptr = NULL;
-
 	// /dev/mem file id
 	int fd;	
-
-	// Declare volatile pointers to I/O registers (volatile 	
-	// means that IO load and store instructions will be used 	
-	// to access these pointer locations, 
-	// instead of regular memory loads and stores)  
   
 	// === get FPGA addresses ==================
     // Open /dev/mem
@@ -577,16 +608,104 @@ int main(void)
 	FIFO_write_ptr =(unsigned int *)(h2p_virtual_base + FIFO_HPS_TO_FPGA_IN_BASE);
 	FIFO_read_ptr = (unsigned int *)(h2p_virtual_base +FIFO_FPGA_TO_HPS_OUT_BASE); //0x10
 
-	// pio_0_ptr = (unsigned int *)(h2p_lw_virtual_base + PIO_0_BASE);
-	// pio_1_ptr = (unsigned int *)(h2p_lw_virtual_base + PIO_1_BASE);
-	// pio_2_ptr = (unsigned int *)(h2p_lw_virtual_base + PIO_2_BASE);
-	// pio_3_ptr = (unsigned int *)(h2p_lw_virtual_base + PIO_3_BASE);
-	// pio_4_ptr = (unsigned int *)(h2p_lw_virtual_base + PIO_4_BASE);
-
 	//============================================
 	int N ;
 	int data[1024] ;
 	int i ;
+
+	while(1)
+	{
+
+		printf("Loop back mode:\n");
+		printf("88888: quit \n");
+		printf("\n\r enter N=");
+		scanf("%d", &N);
+
+		if (N == 88888)
+			break;
+
+		if (N>500) N = 1 ;
+		if (N<1) N = 1 ;
+		
+		// generate a sequence
+		for (i=0; i<N; i++){
+			data[i] = i + 1;
+		}
+		
+		// print fill levels
+		printf("=====================\n\r");
+		printf("fill levels before interleaved write\n\r");
+		printf("write=%d read=%d\n\r", getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr));
+		
+		
+		// ====================================
+		// send array to FIFO and read every time
+		// ====================================
+		for (i=0; i<N; i++){
+			// wait for a slot then
+			// do the actual FIFO write
+			writeFIFO(data[i], FIFO_write_status_ptr, FIFO_write_ptr, true);
+			// now read it back
+			while (!FIFO_EMPTY(FIFO_read_status_ptr)) {
+			//while(!isFIFOEmpty(FIFO_read_status_ptr)){
+				printf("return=%d %d %d\n\r", readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true), getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr)) ; 
+			}	
+		}
+		if(!FIFO_EMPTY(FIFO_read_status_ptr)) printf("delayed last read\n\r");
+		// and one last read because
+		// for this example occasionally there is one left on the loopback
+
+		while (!FIFO_EMPTY(FIFO_read_status_ptr)) {
+			printf("return=%d %d %d\n\r", readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true), getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr)) ;
+		}
+		
+		// finish timing the transfer
+		
+		// ======================================
+		// send array to FIFO and read entire block
+		// ======================================
+		// print fill levels
+		printf("=====================\n\r");
+		printf("fill levels before block write\n\r");
+		printf("write=%d read=%d\n\r", getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr));
+		
+		// send array to FIFO and read block
+		for (i=0; i<N; i++){
+			// wait for a slot
+			writeFIFO(data[i], FIFO_write_status_ptr, FIFO_write_ptr, true);
+		}
+		
+		printf("fill levels before block read\n\r");
+		printf("write=%d read=%d\n\r", getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr));
+		
+		// get array from FIFO while there is data in the FIFO
+		while (!FIFO_EMPTY(FIFO_read_status_ptr)) {
+			// print array from FIFO read port
+			printf("return=%d %d %d\n\r", readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true), getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr)) ; 
+		}
+		
+		// FIFO fill levels
+		printf("fill levels after block read\n\r");
+		printf("write=%d read=%d\n\r", getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr));
+		printf("=====================\n\r");
+
+	}
+
+	close( fd );
+
+	return 0;
+}
+
+
+void demoEvaluate()
+{
+
+}
+
+	
+int main(void)
+{
+	int N ;
 	
 	while(1) 
 	{
@@ -608,133 +727,13 @@ int main(void)
 		if (N == 1)
 		{
 
-			while(1)
-			{
-
-				printf("Loop back mode:\n");
-				printf("88888: quit \n");
-				printf("\n\r enter N=");
-				scanf("%d", &N);
-
-				if (N == 88888)
-					break;
-
-				if (N>500) N = 1 ;
-				if (N<1) N = 1 ;
-				
-				// generate a sequence
-				for (i=0; i<N; i++){
-					data[i] = i + 1;
-				}
-				
-				// print fill levels
-				printf("=====================\n\r");
-				printf("fill levels before interleaved write\n\r");
-				printf("write=%d read=%d\n\r", getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr));
-				
-				
-				// ====================================
-				// send array to FIFO and read every time
-				// ====================================
-				for (i=0; i<N; i++){
-					// wait for a slot then
-					// do the actual FIFO write
-					writeFIFO(data[i], FIFO_write_status_ptr, FIFO_write_ptr, true);
-					// now read it back
-					while (!FIFO_EMPTY(FIFO_read_status_ptr)) {
-					//while(!isFIFOEmpty(FIFO_read_status_ptr)){
-						printf("return=%d %d %d\n\r", readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true), getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr)) ; 
-					}	
-				}
-				if(!FIFO_EMPTY(FIFO_read_status_ptr)) printf("delayed last read\n\r");
-				// and one last read because
-				// for this example occasionally there is one left on the loopback
-
-				while (!FIFO_EMPTY(FIFO_read_status_ptr)) {
-					printf("return=%d %d %d\n\r", readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true), getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr)) ;
-				}
-				
-				// finish timing the transfer
-				
-				// ======================================
-				// send array to FIFO and read entire block
-				// ======================================
-				// print fill levels
-				printf("=====================\n\r");
-				printf("fill levels before block write\n\r");
-				printf("write=%d read=%d\n\r", getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr));
-				
-				// send array to FIFO and read block
-				for (i=0; i<N; i++){
-					// wait for a slot
-					writeFIFO(data[i], FIFO_write_status_ptr, FIFO_write_ptr, true);
-				}
-				
-				printf("fill levels before block read\n\r");
-				printf("write=%d read=%d\n\r", getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr));
-				
-				// get array from FIFO while there is data in the FIFO
-				while (!FIFO_EMPTY(FIFO_read_status_ptr)) {
-					// print array from FIFO read port
-					printf("return=%d %d %d\n\r", readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true), getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr)) ; 
-				}
-				
-				// FIFO fill levels
-				printf("fill levels after block read\n\r");
-				printf("write=%d read=%d\n\r", getFIFOLevel(FIFO_write_status_ptr), getFIFOLevel(FIFO_read_status_ptr));
-				printf("=====================\n\r");
-
-			}
+			loopBack();
 
 		}
 		else if (N == 2)
 		{
 			
 			fsmTest();
-			
-			// while(1)
-			// {
-			// 	printf("input command: \n");
-			// 	printf("<65536: loop back \n");
-			// 	printf("65536: switch hex 1 and  test start signal generation and spike write back \n");
-			// 	printf("65537: switch hex 2 and return pio_0 \n");
-			// 	printf("65538: switch hex 3 and return pio_1 \n");
-			// 	printf("65539: switch hex 4 and return pio_2 \n");
-			// 	printf("65540: switch hex 5 and return pio_3 \n");
-			// 	printf("88888: quit\n");
-
-			// 	scanf("%d", &N);
-
-			// 	if (N == 88888)
-			// 		break;
-				
-			// 	printf("test command decode and write back\n");
-			// 	printf("pio 0 : 1 \n");
-			// 	printf("pio 1 : 2 \n");
-			// 	printf("pio 2 : 3 \n");
-			// 	printf("pio 3 : 4 \n");
-			// 	printf("pio 4 : 5 \n");
-			// 	*pio_0_ptr = 1;
-			// 	*pio_1_ptr = 2;
-			// 	*pio_2_ptr = 3;
-			// 	*pio_3_ptr = 4;
-			// 	*pio_4_ptr = 5;
-
-			// 	printf("send %d \n", N);
-			
-			// 	writeFIFO(N, FIFO_write_status_ptr, FIFO_write_ptr, true);
-
-			// 	usleep(1000);
-
-			// 	while (!FIFO_EMPTY(FIFO_read_status_ptr))
-			// 	{
-			// 		int unsigned return_value =  readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true);
-			// 		printf("return HEX: %x, DEC: %d\n", return_value, return_value);
-			// 	}
-					
-			// }
-
-
 		}
 		else if (N == 3)
 		{
@@ -742,28 +741,14 @@ int main(void)
 		}
 		else if (N == 4)
 		{
-			int class_idx;
+			int class_index;
+
 			printf("select class id \n");
 
-			scanf("%d", &class_idx);
-			
-			// a tabe to store the spike number of each neuron
-			vector<int> neuron_spike_count(NEURON_NUMBER, 0);
+			scanf("%d", &class_index);
 
-			// rate of each input
+			doInferenceWrapper(class_index);
 
-			string filename = "./rates.txt";
-			vector<vector<float> > rate_mat;
-			read_rate_file(filename, rate_mat);
-
-			vector<int> spike_array(INPUT_NUMBER, 0);
-
-			//select a test case
-			int rate_line_number = 3*class_idx + rand() % 3;
-
-			generate_Spike_Array(rate_mat[rate_line_number], spike_array);
-
-			doInference(rate_line_number, 100, spike_array, neuron_spike_count);
 		}
 	}
 
