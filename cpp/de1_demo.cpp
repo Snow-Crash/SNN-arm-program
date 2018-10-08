@@ -209,7 +209,7 @@ void generate_Spike_Array( vector<float>& rate_array, vector<int> & spike_array)
 
 
 void doInference(int window_size, vector<float>& rate_array, vector<int>& neuron_spike_count,
-vector<int>& spike_neuron_idx, vector<int>& spike_time, vector<vector<int>>& input_spike_record, bool record)
+vector<int>& spike_neuron_idx, vector<int>& spike_time, vector<vector<int>>& input_spike_record, bool record, bool print_info)
 {
 
 	// the light weight buss base
@@ -292,8 +292,6 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, vector<vector<int>>& inp
 		if (record == true)
 			input_spike_record.push_back(spike_array);
 
-		printf("tick %d \n", i);
-
 		// initialize pio values to 0
 		unsigned int pio_0_value = 0;
 		unsigned int pio_1_value = 0;
@@ -332,13 +330,19 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, vector<vector<int>>& inp
 			}
 		}
 
-		int j = 0;
-		for(j = 0; j != NEURON_NUMBER; j++)
+		if (print_info == true)
 		{
-			printf("%d", spike_array[j]);
-			
+			printf("print info true \n");
+			printf("tick %d \n", i);
+			int j = 0;
+			for(j = 0; j != NEURON_NUMBER; j++)
+			{
+				printf("%d", spike_array[j]);
+				
+			}
+			printf("\n");
 		}
-		printf("\n");
+
 
 		// set pio value
 		*pio_0_ptr = pio_0_value;
@@ -367,7 +371,11 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, vector<vector<int>>& inp
 				{
 					unsigned int neuron_index = result & 0x000000ff;
 					neuron_spike_count[neuron_index]++;
-					printf("spike neuron: %d \n", neuron_index);
+
+					if (print_info == true)
+					{
+						printf("spike neuron: %d \n", neuron_index);
+					}
 
 
 					if (record == true)
@@ -384,20 +392,25 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, vector<vector<int>>& inp
 	}
 
 	// find the neuron which fires most frequently
-	int max = 0;
-	int idx = 0;
-	int result_idx = 0;
-	for (idx = 0; idx != NEURON_NUMBER; idx++)
+
+	if (print_info == true)
 	{
-		if (neuron_spike_count[idx] > max)
+		int max = 0;
+		int idx = 0;
+		int result_idx = 0;
+		for (idx = 0; idx != NEURON_NUMBER; idx++)
 		{
-			max = neuron_spike_count[idx];
-			result_idx = idx;
+			if (neuron_spike_count[idx] > max)
+			{
+				max = neuron_spike_count[idx];
+				result_idx = idx;
+			}
 			
+			printf("spike count: %d ", neuron_spike_count[idx]);
 		}
-		
-		printf("spike count: %d ", neuron_spike_count[idx]);
 	}
+
+
 
 	// write to txt file
 	// ofstream myfile;
@@ -429,7 +442,7 @@ float RandomFloat(float lower, float upper)
     return lower + r;
 }
 
-void doInferenceWrapper(int class_index, float noise)
+void doInferenceWrapper(int class_index, float noise, bool print_info)
 {
 	//printf("select class id \n");
 
@@ -473,7 +486,7 @@ void doInferenceWrapper(int class_index, float noise)
 	vector<vector<int> > input_spike_record;
 
 	doInference(100, input_with_noise, neuron_spike_count, spike_neuron_idx,
-	spike_time, input_spike_record, true);
+	spike_time, input_spike_record, true, print_info);
 
 	// write to txt file
 	ofstream myfile;
@@ -761,7 +774,7 @@ void demoEvaluate()
 	for (int i = 0; i != N; i++)
 	{	
 		int input_class_index = rand() % 50;
-		doInferenceWrapper(input_class_index, 0);
+		doInferenceWrapper(input_class_index, 0, true);
 
 		usleep(1000);
 	}
@@ -802,7 +815,6 @@ int main(int argc, char *argv[])
 			std::size_t pos = 0;
 			pos = argstr.find("=");
 			string valuestr = argstr.substr(pos+1, argstr.length()-1);
-			cout << "noise" << valuestr << "\n";
 			noise = stof(valuestr);
 		}
 	}
@@ -847,7 +859,7 @@ int main(int argc, char *argv[])
 
 				scanf("%d", &input_class_index);
 
-				doInferenceWrapper(input_class_index, 0);
+				doInferenceWrapper(input_class_index, 0, true);
 
 			}
 
@@ -859,7 +871,7 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		doInferenceWrapper(class_index, noise);
+		doInferenceWrapper(class_index, noise, false);
 	}
 
 
