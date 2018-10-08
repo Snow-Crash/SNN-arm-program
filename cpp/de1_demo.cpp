@@ -421,7 +421,15 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, vector<vector<int>>& inp
 
 }
 
-void doInferenceWrapper(int class_index)
+float RandomFloat(float lower, float upper) 
+{
+    float random = ((float) rand()) / (float) RAND_MAX;
+    float diff = upper - lower;
+    float r = random * diff;
+    return lower + r;
+}
+
+void doInferenceWrapper(int class_index, float noise)
 {
 	//printf("select class id \n");
 
@@ -439,13 +447,32 @@ void doInferenceWrapper(int class_index)
 	//select a test case
 	int rate_line_number = 3*class_index + rand() % 3;
 
+	vector<float> input_with_noise = rate_mat[rate_line_number];
+	if (noise != 0)
+	{
+		for (unsigned int idx = 0; idx != input_with_noise.size(); idx++)
+		{
+			float noise_amplitude = RandomFloat(0, noise);
+			
+			//prinft("noise_amplitude %f", noise_amplitude);
+
+			if ((rand() % 2) == 0)
+				noise_amplitude += 1;
+			else
+				noise_amplitude = 1 - noise_amplitude;
+
+			input_with_noise[idx] = input_with_noise[idx] * noise_amplitude;
+		}
+
+	}
+
 	//generate_Spike_Array(rate_mat[rate_line_number], spike_array);
 
 	vector<int> spike_neuron_idx;
 	vector<int> spike_time;
 	vector<vector<int> > input_spike_record;
 
-	doInference(100, rate_mat[rate_line_number], neuron_spike_count, spike_neuron_idx,
+	doInference(100, input_with_noise, neuron_spike_count, spike_neuron_idx,
 	spike_time, input_spike_record, true);
 
 	// write to txt file
@@ -733,8 +760,8 @@ void demoEvaluate()
 
 	for (int i = 0; i != N; i++)
 	{	
-		int class_index = rand() % 50;
-		doInferenceWrapper(class_index);
+		int input_class_index = rand() % 50;
+		doInferenceWrapper(input_class_index, 0);
 
 		usleep(1000);
 	}
@@ -748,12 +775,12 @@ int main(int argc, char *argv[])
 	vector<string> argvec;
 	int class_index = 0;
 	int input_number = 0;
-	int noise = 0;
+	float noise = 0;
 
 	// parse command line
 	for (int i = 1; i != argc; i++)
 	{
-		const char* arg = argv[1];
+		const char* arg = argv[i];
 		string argstr(arg);
 		//argvec.push_back(argstr);
 		if (argstr.find("-class") != std::string::npos) 
@@ -775,7 +802,8 @@ int main(int argc, char *argv[])
 			std::size_t pos = 0;
 			pos = argstr.find("=");
 			string valuestr = argstr.substr(pos+1, argstr.length()-1);
-			noise = stoi(valuestr);
+			cout << "noise" << valuestr << "\n";
+			noise = stof(valuestr);
 		}
 	}
 
@@ -813,13 +841,13 @@ int main(int argc, char *argv[])
 			}
 			else if (N == 3)
 			{
-				int class_index;
+				int input_class_index;
 
 				printf("select class id \n");
 
-				scanf("%d", &class_index);
+				scanf("%d", &input_class_index);
 
-				doInferenceWrapper(class_index);
+				doInferenceWrapper(input_class_index, 0);
 
 			}
 
@@ -831,8 +859,7 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-
-		doInferenceWrapper(class_index);
+		doInferenceWrapper(class_index, noise);
 	}
 
 
