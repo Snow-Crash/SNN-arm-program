@@ -209,7 +209,7 @@ void generate_Spike_Array( vector<float>& rate_array, vector<int> & spike_array)
 
 
 void doInference(int window_size, vector<float>& rate_array, vector<int>& neuron_spike_count,
-vector<int>& spike_neuron_idx, vector<int>& spike_time, bool record)
+vector<int>& spike_neuron_idx, vector<int>& spike_time, vector<vector<int>>& input_spike_record, bool record)
 {
 
 	// the light weight buss base
@@ -283,8 +283,6 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, bool record)
 
 	int tick = 0;
 
-	vector<vector<int> > spike_array_record;
-
 	for (int i = 0; i != window_size; i++)
 	{
 
@@ -292,7 +290,7 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, bool record)
 		generate_Spike_Array(rate_array, spike_array);
 
 		if (record == true)
-			spike_array_record.push_back(spike_array);
+			input_spike_record.push_back(spike_array);
 
 		printf("tick %d \n", i);
 
@@ -401,6 +399,16 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, bool record)
 		printf("spike count: %d ", neuron_spike_count[idx]);
 	}
 
+	// write to txt file
+	// ofstream myfile;
+	// myfile.open ("input_spike.txt");
+	// for (unsigned int i = 0; i != input_spike_record.size(); i++)
+	// {
+	// 	for(int j = 0; j != spike_array_record[i]; j++)
+	// 		myfile << input_spike_record[i][j];
+	// 	myfile <<"\n";
+	// }
+	// myfile.close();
 
 
 	// if( munmap( h2p_virtual_base, HW_REGS_SPAN ) != 0 ) {
@@ -435,18 +443,32 @@ void doInferenceWrapper(int class_index)
 
 	vector<int> spike_neuron_idx;
 	vector<int> spike_time;
+	vector<vector<int> > input_spike_record;
 
 	doInference(100, rate_mat[rate_line_number], neuron_spike_count, spike_neuron_idx,
-	spike_time, true);
+	spike_time, input_spike_record, true);
 
 	// write to txt file
 	ofstream myfile;
-	myfile.open ("spike_record.txt");
+	myfile.open ("output_spike_record.txt");
 	for (unsigned int i = 0; i != spike_neuron_idx.size(); i++)
 	{
 		myfile << spike_neuron_idx[i] << "," << spike_time[i] << "\n";
 	}
 	myfile.close();
+
+	ofstream myfile2;
+	myfile2.open ("input_spike_record.txt");
+	for (unsigned int i = 0; i != input_spike_record.size(); i++)
+	{
+		for (int j = 0; j != INPUT_NUMBER; j++)
+		{
+			myfile2 << input_spike_record[i][j];
+		}
+			
+		myfile2 << "\n";
+	}
+	myfile2.close();
 
 }
 
