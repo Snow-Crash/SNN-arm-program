@@ -261,6 +261,22 @@ void plot_output_raster(vector<int>& spike_time, vector<int>& spike_neuron_idx)
 	cout << buffer.str() << "\n";
 }
 
+int get_result(vector<int>& neuron_spike_count)
+{
+	int max = 0;
+	int result_idx = 0;
+	for (int idx = 0; idx != NEURON_NUMBER; idx++)
+	{
+		if (neuron_spike_count[idx] > max)
+		{
+			max = neuron_spike_count[idx];
+			result_idx = idx;
+		}
+	}
+
+	return result_idx;
+}
+
 void print_result(vector<int>& neuron_spike_count)
 {
 	// find the neuron which fires most frequently
@@ -286,16 +302,8 @@ void print_result(vector<int>& neuron_spike_count)
 
 	printf("\ncount:  ");
 
-	int max = 0;
-	int result_idx = 0;
 	for (int idx = 0; idx != 25; idx++)
 	{
-		if (neuron_spike_count[idx] > max)
-		{
-			max = neuron_spike_count[idx];
-			result_idx = idx;
-		}
-		
 		printf("%2d ", neuron_spike_count[idx]);
 	}
 
@@ -323,15 +331,11 @@ void print_result(vector<int>& neuron_spike_count)
 
 	for (int idx = 25; idx != 50; idx++)
 	{
-		if (neuron_spike_count[idx] > max)
-		{
-			max = neuron_spike_count[idx];
-			result_idx = idx;
-		}
 		
 		printf("%2d ", neuron_spike_count[idx]);
 	}
 
+	int result_idx = get_result(neuron_spike_count);
 	printf("\nclassification result: %d\n", result_idx);
 
 }
@@ -1006,7 +1010,7 @@ int main(int argc, char *argv[])
 				vector<int> spike_time;
 				vector<vector<int> > input_spike_record;
 
-				doInferenceWrapper(class_index, 0, spike_neuron_idx, spike_time, input_spike_record, false);
+				doInferenceWrapper(input_class_index, 0, spike_neuron_idx, spike_time, input_spike_record, true);
 
 			}
 
