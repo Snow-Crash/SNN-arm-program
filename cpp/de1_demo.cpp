@@ -742,57 +742,100 @@ void demoEvaluate()
 }
 
 	
-int main(void)
+int main(int argc, char *argv[])
 {
-	int N ;
-	
-	while(1) 
+
+	vector<string> argvec;
+	int class_index = 0;
+	int input_number = 0;
+	int noise = 0;
+
+	// parse command line
+	for (int i = 1; i != argc; i++)
 	{
-
-		printf("select mode(1: loop back, 2: fsm test): \n");
-		printf("1: loop back \n");
-		printf("2: fsm test \n");
-		printf("3: single input demo \n");
-		printf("4: multiple input demo \n");
-		scanf("%d", &N);
-
-
-		// control
-		// 0 - 65535: loop back, fpga returns the input value
-		// 65536: generate a statr signal, return 0 and 0xff000000
-		// 65537: return value of pio 0
-		// 65538: return value of pio 1
-		// 65539: return value of pio 2
-		// 65540: retuen value of pio 3
-
-		if (N == 1)
+		const char* arg = argv[1];
+		string argstr(arg);
+		//argvec.push_back(argstr);
+		if (argstr.find("-class") != std::string::npos) 
 		{
-
-			loopBack();
-
+			std::size_t pos = 0;
+			pos = argstr.find("=");
+			string valuestr = argstr.substr(pos+1, argstr.length()-1);
+			class_index = stoi(valuestr);
 		}
-		else if (N == 2)
+		else if (argstr.find("-number") != std::string::npos)
 		{
-			
-			fsmTest();
+			std::size_t pos = 0;
+			pos = argstr.find("=");
+			string valuestr = argstr.substr(pos+1, argstr.length()-1);
+			input_number = stoi(valuestr);
 		}
-		else if (N == 3)
+		else if (argstr.find("-noise") != std::string::npos)
 		{
-			int class_index;
-
-			printf("select class id \n");
-
-			scanf("%d", &class_index);
-
-			doInferenceWrapper(class_index);
-
-		}
-
-		else if (N == 4)
-		{
-			demoEvaluate();
+			std::size_t pos = 0;
+			pos = argstr.find("=");
+			string valuestr = argstr.substr(pos+1, argstr.length()-1);
+			noise = stoi(valuestr);
 		}
 	}
+
+	if (argc == 1)
+	{
+		int N ;
+		
+		while(1) 
+		{
+			printf("select mode(1: loop back, 2: fsm test): \n");
+			printf("1: loop back \n");
+			printf("2: fsm test \n");
+			printf("3: single input demo \n");
+			printf("4: multiple input demo \n");
+			scanf("%d", &N);
+
+			// control
+			// 0 - 65535: loop back, fpga returns the input value
+			// 65536: generate a statr signal, return 0 and 0xff000000
+			// 65537: return value of pio 0
+			// 65538: return value of pio 1
+			// 65539: return value of pio 2
+			// 65540: retuen value of pio 3
+
+			if (N == 1)
+			{
+
+				loopBack();
+
+			}
+			else if (N == 2)
+			{
+				
+				fsmTest();
+			}
+			else if (N == 3)
+			{
+				int class_index;
+
+				printf("select class id \n");
+
+				scanf("%d", &class_index);
+
+				doInferenceWrapper(class_index);
+
+			}
+
+			else if (N == 4)
+			{
+				demoEvaluate();
+			}
+		}
+	}
+	else
+	{
+
+		doInferenceWrapper(class_index);
+	}
+
+
 
 } // end main
 
