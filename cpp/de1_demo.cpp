@@ -332,8 +332,7 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, vector<vector<int>>& inp
 
 		if (print_info == true)
 		{
-			printf("print info true \n");
-			printf("tick %d \n", i);
+			printf("tick %d , input spike array: \n", i);
 			int j = 0;
 			for(j = 0; j != NEURON_NUMBER; j++)
 			{
@@ -362,6 +361,12 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, vector<vector<int>>& inp
 
 
 		// after loop 100 times, read fifo until its empty
+
+		if (print_info == true)
+		{
+			printf("neruons spiked in current tick: \n");
+		}
+
 		while (!FIFO_EMPTY(FIFO_read_status_ptr)) 
 		{
 			unsigned int result = readFIFO(FIFO_read_status_ptr, FIFO_read_ptr, true);
@@ -374,7 +379,7 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, vector<vector<int>>& inp
 
 					if (print_info == true)
 					{
-						printf("spike neuron: %d \n", neuron_index);
+						printf(" %d ", neuron_index);
 					}
 
 
@@ -388,6 +393,11 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, vector<vector<int>>& inp
 			usleep(50);
 		}
 
+		if (print_info == true)
+		{
+			printf("\n");
+		}
+
 		tick++;
 	}
 
@@ -395,10 +405,30 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, vector<vector<int>>& inp
 
 	if (print_info == true)
 	{
+		printf("spike statistic: \n");
+		printf("neuron: ");
+
+
+		// print 0-24 neuron
+		for (int idx = 0; idx != 25; idx++)
+		{
+			printf("%2d ", idx);
+		}
+
+		printf("\n");
+
+		for (int idx = 0; idx != 25; idx++)
+		{
+			printf("---");
+		}
+
+		printf("--------");
+
+		printf("\ncount:  ");
+
 		int max = 0;
-		int idx = 0;
 		int result_idx = 0;
-		for (idx = 0; idx != NEURON_NUMBER; idx++)
+		for (int idx = 0; idx != 25; idx++)
 		{
 			if (neuron_spike_count[idx] > max)
 			{
@@ -406,8 +436,44 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, vector<vector<int>>& inp
 				result_idx = idx;
 			}
 			
-			printf("spike count: %d ", neuron_spike_count[idx]);
+			printf("%2d ", neuron_spike_count[idx]);
 		}
+
+		// print 25-49 neuorn
+		printf("\n========");
+		for (int idx = 0; idx != 25; idx++)
+		{
+			printf("===");
+		}
+
+		printf("\nneuron: ");
+		for (int idx = 25; idx !=50; idx++)
+		{
+			printf("%2d ", idx);
+		}
+
+		printf("\n");
+
+		for (int idx = 25; idx != 50; idx++)
+		{
+			printf("---");
+		}
+
+		printf("\ncount:  ");
+
+		for (int idx = 25; idx != 50; idx++)
+		{
+			if (neuron_spike_count[idx] > max)
+			{
+				max = neuron_spike_count[idx];
+				result_idx = idx;
+			}
+			
+			printf("%2d ", neuron_spike_count[idx]);
+		}
+
+		printf("\result: %d\n", result_idx);
+
 	}
 
 
@@ -444,9 +510,9 @@ float RandomFloat(float lower, float upper)
 
 void doInferenceWrapper(int class_index, float noise, bool print_info)
 {
-	//printf("select class id \n");
 
-	//scanf("%d", &class_index);
+	if (print_info == true)
+		printf("input class: %d\n", class_index);
 	
 	// a tabe to store the spike number of each neuron
 	vector<int> neuron_spike_count(NEURON_NUMBER, 0);
@@ -824,7 +890,8 @@ int main(int argc, char *argv[])
 		int N ;
 		
 		while(1) 
-		{
+		{	
+			printf("\n");
 			printf("select mode(1: loop back, 2: fsm test): \n");
 			printf("1: loop back \n");
 			printf("2: fsm test \n");
