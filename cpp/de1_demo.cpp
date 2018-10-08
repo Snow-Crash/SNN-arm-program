@@ -261,6 +261,81 @@ void plot_output_raster(vector<int>& spike_time, vector<int>& spike_neuron_idx)
 	cout << buffer.str() << "\n";
 }
 
+void print_result(vector<int>& neuron_spike_count)
+{
+	// find the neuron which fires most frequently
+
+	printf("\nspike statistic: \n");
+	printf("neuron: ");
+
+
+	// print 0-24 neuron
+	for (int idx = 0; idx != 25; idx++)
+	{
+		printf("%2d ", idx);
+	}
+
+	printf("\n");
+
+	for (int idx = 0; idx != 25; idx++)
+	{
+		printf("---");
+	}
+
+	printf("--------");
+
+	printf("\ncount:  ");
+
+	int max = 0;
+	int result_idx = 0;
+	for (int idx = 0; idx != 25; idx++)
+	{
+		if (neuron_spike_count[idx] > max)
+		{
+			max = neuron_spike_count[idx];
+			result_idx = idx;
+		}
+		
+		printf("%2d ", neuron_spike_count[idx]);
+	}
+
+	// print 25-49 neuorn
+	printf("\n========");
+	for (int idx = 0; idx != 25; idx++)
+	{
+		printf("===");
+	}
+
+	printf("\nneuron: ");
+	for (int idx = 25; idx !=50; idx++)
+	{
+		printf("%2d ", idx);
+	}
+
+	printf("\n");
+
+	for (int idx = 25; idx != 50; idx++)
+	{
+		printf("---");
+	}
+	printf("--------");
+	printf("\ncount:  ");
+
+	for (int idx = 25; idx != 50; idx++)
+	{
+		if (neuron_spike_count[idx] > max)
+		{
+			max = neuron_spike_count[idx];
+			result_idx = idx;
+		}
+		
+		printf("%2d ", neuron_spike_count[idx]);
+	}
+
+	printf("\nclassification result: %d\n", result_idx);
+
+}
+
 
 void doInference(int window_size, vector<float>& rate_array, vector<int>& neuron_spike_count,
 vector<int>& spike_neuron_idx, vector<int>& spike_time, vector<vector<int>>& input_spike_record, bool record, bool print_info)
@@ -455,80 +530,7 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, vector<vector<int>>& inp
 		tick++;
 	}
 
-	// find the neuron which fires most frequently
 
-	if (print_info == true)
-	{
-		printf("spike statistic: \n");
-		printf("neuron: ");
-
-
-		// print 0-24 neuron
-		for (int idx = 0; idx != 25; idx++)
-		{
-			printf("%2d ", idx);
-		}
-
-		printf("\n");
-
-		for (int idx = 0; idx != 25; idx++)
-		{
-			printf("---");
-		}
-
-		printf("--------");
-
-		printf("\ncount:  ");
-
-		int max = 0;
-		int result_idx = 0;
-		for (int idx = 0; idx != 25; idx++)
-		{
-			if (neuron_spike_count[idx] > max)
-			{
-				max = neuron_spike_count[idx];
-				result_idx = idx;
-			}
-			
-			printf("%2d ", neuron_spike_count[idx]);
-		}
-
-		// print 25-49 neuorn
-		printf("\n========");
-		for (int idx = 0; idx != 25; idx++)
-		{
-			printf("===");
-		}
-
-		printf("\nneuron: ");
-		for (int idx = 25; idx !=50; idx++)
-		{
-			printf("%2d ", idx);
-		}
-
-		printf("\n");
-
-		for (int idx = 25; idx != 50; idx++)
-		{
-			printf("---");
-		}
-
-		printf("\ncount:  ");
-
-		for (int idx = 25; idx != 50; idx++)
-		{
-			if (neuron_spike_count[idx] > max)
-			{
-				max = neuron_spike_count[idx];
-				result_idx = idx;
-			}
-			
-			printf("%2d ", neuron_spike_count[idx]);
-		}
-
-		printf("\result: %d\n", result_idx);
-
-	}
 
 
 
@@ -632,13 +634,15 @@ void doInferenceWrapper(int class_index, float noise, bool print_info)
 
 	if (print_info == true)
 	{
-		printf("input spike raster:\n");
+
+		print_result(neuron_spike_count);
+
+		printf("\n\ninput spike raster:\n");
 		plot_input_raster(input_spike_record);
 
 
-		printf("\output spike raster:\n");
+		printf("\noutput spike raster:\n");
 		plot_output_raster(spike_time, spike_neuron_idx);
-
 
 	}
 
