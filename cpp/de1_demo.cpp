@@ -207,6 +207,60 @@ void generate_Spike_Array( vector<float>& rate_array, vector<int> & spike_array)
 	}
 }
 
+void plot_input_raster(vector<vector<int> >& input_spike_record)
+{
+	//vector<string> raster;
+	ostringstream buffer; 
+	for (unsigned int neuron_idx = 0; neuron_idx != INPUT_NUMBER; neuron_idx++)
+	{
+		
+		for (unsigned tick = 0; tick != WINDOW; tick++)
+		{
+			if (input_spike_record[tick][neuron_idx] == 1)
+				buffer << "|";
+			else
+				buffer << " ";
+		}
+
+		buffer << "\n";
+	}
+
+	cout << buffer.str() << "\n";
+
+}
+
+void plot_output_raster(vector<int>& spike_time, vector<int>& spike_neuron_idx)
+{
+	vector<vector<int> > raster;
+	for (int i = 0; i != NEURON_NUMBER; i++)
+	{
+		vector<int> vec(WINDOW, 0);
+		raster.push_back(vec);
+	}
+
+	for (unsigned int line = 0; line != spike_time.size(); line++)
+	{
+		int neuron_idx = spike_neuron_idx[line];
+		int neuron_spike_time = spike_time[line];
+		raster[neuron_idx][neuron_spike_time] = 1;
+	}
+
+	ostringstream buffer;
+	for (unsigned int neuron_idx = 0; neuron_idx != raster.size(); neuron_idx++)
+	{
+		buffer << neuron_idx ;
+		for (unsigned int tick = 0; tick != raster[neuron_idx].size(); tick++)
+			if (raster[neuron_idx][tick] == 1)
+				buffer << "|";
+			else
+				buffer << ".";
+		
+		buffer << "\n";
+	}
+
+	cout << buffer.str() << "\n";
+}
+
 
 void doInference(int window_size, vector<float>& rate_array, vector<int>& neuron_spike_count,
 vector<int>& spike_neuron_idx, vector<int>& spike_time, vector<vector<int>>& input_spike_record, bool record, bool print_info)
@@ -575,6 +629,18 @@ void doInferenceWrapper(int class_index, float noise, bool print_info)
 		myfile2 << "\n";
 	}
 	myfile2.close();
+
+	if (print_info == true)
+	{
+		printf("input spike raster:\n");
+		plot_input_raster(input_spike_record);
+
+
+		printf("\output spike raster:\n");
+		plot_output_raster(spike_time, spike_neuron_idx);
+
+
+	}
 
 }
 
