@@ -80,30 +80,35 @@ demofile = "./de1_demo"
 classidx_int = 1
 noise_float = 0.1
 
+# convert argument to string
 classidx = "-class=" + str(classidx_int)
 noise = "-noise=" + str(noise_float)
 
+# put all arguments to a list
 arglist = [demofile, classidx, noise]
 
+# call the arm demo program, comment out when debug
+# the program may return a value, it's not used now
+# each time the program is called, it will execute once and create two file in
+# same folder as the program: 'input_spike_record.txt' and 'output_spike_record.txt'
+#ret = subprocess.call(arglist)
 
-#ret = subprocess.call(["./de1_demo", "-class=1"])
 
 
-
+# plot the input spike
+# window size is 100, there are 128 axons
 inp = raster_plot(100, 128)
 inp.read_input_spike_file('D:/de1/test/fifo_test_simplified/arm-program/cpp/input_spike_record.txt')
+# return a well formatted string
 inpplot = inp.plot_raster()
 
+# plot output spikes
+# window is 100, 50 neurons
 outp = raster_plot(100, 50)
 outp.read_output_spike_file('D:/de1/test/fifo_test_simplified/arm-program/cpp/output_spike_record.txt')
-outplot = outp.plot_raster()
+# you can specify the symbol which represent the pixel
+outplot = outp.plot_raster(pixel_symbol_off = ' ', pixel_symbol_on = '*')
 
 print(outplot)
 
-#mat = []
-#line = None
-#with open('D:/de1/test/fifo_test_simplified/arm-program/cpp/output_spike_record.txt') as f:
-#    lines = f.read().splitlines()
-#
-#for line in lines:
-#    mat.append(list(line))
+
