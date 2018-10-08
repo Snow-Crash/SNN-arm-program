@@ -564,7 +564,8 @@ float RandomFloat(float lower, float upper)
     return lower + r;
 }
 
-void doInferenceWrapper(int class_index, float noise, bool print_info)
+void doInferenceWrapper(int class_index, float noise, vector<int>& spike_neuron_idx, vector<int>& spike_time, 
+vector<vector<int> >& input_spike_record, bool print_info)
 {
 
 	if (print_info == true)
@@ -603,9 +604,9 @@ void doInferenceWrapper(int class_index, float noise, bool print_info)
 
 	//generate_Spike_Array(rate_mat[rate_line_number], spike_array);
 
-	vector<int> spike_neuron_idx;
-	vector<int> spike_time;
-	vector<vector<int> > input_spike_record;
+	// vector<int> spike_neuron_idx;
+	// vector<int> spike_time;
+	// vector<vector<int> > input_spike_record;
 
 	doInference(100, input_with_noise, neuron_spike_count, spike_neuron_idx,
 	spike_time, input_spike_record, true, print_info);
@@ -910,7 +911,12 @@ void demoEvaluate()
 	for (int i = 0; i != N; i++)
 	{	
 		int input_class_index = rand() % 50;
-		doInferenceWrapper(input_class_index, 0, true);
+
+		vector<int> spike_neuron_idx;
+		vector<int> spike_time;
+		vector<vector<int> > input_spike_record;
+
+		doInferenceWrapper(input_class_index, 0, spike_neuron_idx, spike_time, input_spike_record, false);
 
 		usleep(1000);
 	}
@@ -996,7 +1002,11 @@ int main(int argc, char *argv[])
 
 				scanf("%d", &input_class_index);
 
-				doInferenceWrapper(input_class_index, 0, true);
+				vector<int> spike_neuron_idx;
+				vector<int> spike_time;
+				vector<vector<int> > input_spike_record;
+
+				doInferenceWrapper(class_index, 0, spike_neuron_idx, spike_time, input_spike_record, false);
 
 			}
 
@@ -1008,7 +1018,11 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		doInferenceWrapper(class_index, noise, false);
+		vector<int> spike_neuron_idx;
+		vector<int> spike_time;
+		vector<vector<int> > input_spike_record;
+
+		doInferenceWrapper(class_index, noise, spike_neuron_idx, spike_time, input_spike_record, false);
 	}
 
 
