@@ -569,7 +569,7 @@ float RandomFloat(float lower, float upper)
 }
 
 void doInferenceWrapper(int class_index, float noise, vector<int>& spike_neuron_idx, vector<int>& spike_time, 
-vector<vector<int> >& input_spike_record, bool print_info)
+vector<vector<int> >& input_spike_record, int& classification_result, bool print_info)
 {
 
 	if (print_info == true)
@@ -636,6 +636,8 @@ vector<vector<int> >& input_spike_record, bool print_info)
 		myfile2 << "\n";
 	}
 	myfile2.close();
+
+	classification_result = get_result(neuron_spike_count);
 
 	if (print_info == true)
 	{
@@ -920,7 +922,11 @@ void demoEvaluate()
 		vector<int> spike_time;
 		vector<vector<int> > input_spike_record;
 
-		doInferenceWrapper(input_class_index, 0, spike_neuron_idx, spike_time, input_spike_record, false);
+		int classification_result = -1;
+
+		doInferenceWrapper(input_class_index, 0, spike_neuron_idx, spike_time, input_spike_record, classification_result, false);
+		
+		cout << "input class: " << input_class_index << ", classification result: " << classification_result << "\n";
 
 		usleep(1000);
 	}
@@ -1010,7 +1016,11 @@ int main(int argc, char *argv[])
 				vector<int> spike_time;
 				vector<vector<int> > input_spike_record;
 
-				doInferenceWrapper(input_class_index, 0, spike_neuron_idx, spike_time, input_spike_record, true);
+				int classification_result = -1;
+
+				doInferenceWrapper(input_class_index, 0, spike_neuron_idx, spike_time, input_spike_record, classification_result, true);
+
+				cout << "input class: " << input_class_index << ", classification result: " << classification_result << "\n";
 
 			}
 
@@ -1025,8 +1035,10 @@ int main(int argc, char *argv[])
 		vector<int> spike_neuron_idx;
 		vector<int> spike_time;
 		vector<vector<int> > input_spike_record;
+		int classification_result = -1;
+		doInferenceWrapper(class_index, noise, spike_neuron_idx, spike_time, input_spike_record, classification_result, false);
 
-		doInferenceWrapper(class_index, noise, spike_neuron_idx, spike_time, input_spike_record, false);
+		cout << "input class: " << class_index << ", classification result: " << classification_result << "\n";
 	}
 
 
