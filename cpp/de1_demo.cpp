@@ -914,6 +914,8 @@ void demoEvaluate()
 	printf("input numeber of input:");
 	scanf("%d", &N);
 
+	float error_count = 0;
+
 	for (int i = 0; i != N; i++)
 	{	
 		int input_class_index = rand() % 50;
@@ -926,9 +928,14 @@ void demoEvaluate()
 
 		doInferenceWrapper(input_class_index, 0, spike_neuron_idx, spike_time, input_spike_record, classification_result, false);
 		
-		cout << "input class: " << input_class_index << ", classification result: " << classification_result << "\n";
+		cout << "input class: " << input_class_index << ", classification result: " << classification_result << ", ";
 
-		usleep(1000);
+		if (input_class_index != classification_result)
+			error_count++;
+		
+		cout << "acc: " << ((float)(i+1 - error_count)) / (float)(i+1) << " \n";
+
+		usleep(100);
 	}
 	
 }
@@ -936,6 +943,8 @@ void demoEvaluate()
 	
 int main(int argc, char *argv[])
 {
+
+	srand (time(NULL));
 
 	vector<string> argvec;
 	int class_index = 0;
