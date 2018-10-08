@@ -209,7 +209,7 @@ void generate_Spike_Array( vector<float>& rate_array, vector<int> & spike_array)
 
 
 void doInference(int window_size, vector<float>& rate_array, vector<int>& neuron_spike_count,
-vector<int>& spike_neuron_idx, vector<int>& spike_time, bool record_spike_time)
+vector<int>& spike_neuron_idx, vector<int>& spike_time, bool record)
 {
 
 	// the light weight buss base
@@ -283,11 +283,16 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, bool record_spike_time)
 
 	int tick = 0;
 
+	vector<vector<int> > spike_array_record;
+
 	for (int i = 0; i != window_size; i++)
 	{
 
 		vector<int> spike_array(INPUT_NUMBER, 0);
 		generate_Spike_Array(rate_array, spike_array);
+
+		if (record == true)
+			spike_array_record.push_back(spike_array);
 
 		printf("tick %d \n", i);
 
@@ -367,7 +372,7 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, bool record_spike_time)
 					printf("spike neuron: %d \n", neuron_index);
 
 
-					if (record_spike_time == true)
+					if (record == true)
 					{
 						spike_neuron_idx.push_back(neuron_index);
 						spike_time.push_back(tick);
@@ -377,6 +382,7 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, bool record_spike_time)
 			usleep(50);
 		}
 
+		tick++;
 	}
 
 	// find the neuron which fires most frequently
@@ -699,7 +705,18 @@ int loopBack()
 
 void demoEvaluate()
 {
+	int N;
+	printf("input numeber of input:");
+	scanf("%d", &N);
 
+	for (int i = 0; i != N; i++)
+	{	
+		int class_index = rand() % 50;
+		doInferenceWrapper(class_index);
+
+		usleep(1000);
+	}
+	
 }
 
 	
@@ -713,6 +730,8 @@ int main(void)
 		printf("select mode(1: loop back, 2: fsm test): \n");
 		printf("1: loop back \n");
 		printf("2: fsm test \n");
+		printf("3: single input demo \n");
+		printf("4: multiple input demo \n");
 		scanf("%d", &N);
 
 
@@ -737,10 +756,6 @@ int main(void)
 		}
 		else if (N == 3)
 		{
-
-		}
-		else if (N == 4)
-		{
 			int class_index;
 
 			printf("select class id \n");
@@ -749,6 +764,11 @@ int main(void)
 
 			doInferenceWrapper(class_index);
 
+		}
+
+		else if (N == 4)
+		{
+			demoEvaluate();
 		}
 	}
 
