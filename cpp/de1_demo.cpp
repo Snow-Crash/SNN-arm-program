@@ -28,6 +28,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <random>
 
 
 #define bufSize 1024
@@ -198,10 +199,10 @@ void read_rate_file_line(string filepath, int line_number, vector<float>& rates)
 
 void generate_Spike_Array( vector<float>& rate_array, vector<int> & spike_array)
 {
-	float x = (float)rand() / (float)(RAND_MAX);
 	int idx = 0;
 	for (idx = 0; idx != INPUT_NUMBER; idx++)
 	{
+		float x = (float)rand() / (float)(RAND_MAX);
 		if (x < rate_array[idx])
 			spike_array[idx] = 1;
 	}
@@ -490,8 +491,7 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, vector<vector<int>>& inp
 		writeFIFO(0x10000, FIFO_write_status_ptr, FIFO_write_ptr, true);
 
 		// wait 10 ms
-		usleep(1000*10);
-
+		usleep(1000);
 
 		// after loop 100 times, read fifo until its empty
 
@@ -568,7 +568,7 @@ float RandomFloat(float lower, float upper)
     return lower + r;
 }
 
-void doInferenceWrapper(int class_index, float noise, vector<int>& spike_neuron_idx, vector<int>& spike_time, 
+void doInferenceWrapper(int class_index, float noise_level, vector<int>& spike_neuron_idx, vector<int>& spike_time, 
 vector<vector<int> >& input_spike_record, int& classification_result, bool print_info)
 {
 
@@ -587,21 +587,29 @@ vector<vector<int> >& input_spike_record, int& classification_result, bool print
 	//select a test case
 	int rate_line_number = 3*class_index + rand() % 3;
 
+	default_random_engine generator;
+
+	normal_distribution<> dist(0, noise_level);
+
 	vector<float> input_with_noise = rate_mat[rate_line_number];
-	if (noise != 0)
+	if (noise_level != 0)
 	{
 		for (unsigned int idx = 0; idx != input_with_noise.size(); idx++)
 		{
-			float noise_amplitude = RandomFloat(0, noise);
+			float noise_amplitude = RandomFloat(0, noise_level);
 			
 			//prinft("noise_amplitude %f", noise_amplitude);
 
 			if ((rand() % 2) == 0)
-				noise_amplitude += 1;
-			else
-				noise_amplitude = 1 - noise_amplitude;
+				noise_amplitude = 0 - noise_amplitude;
 
-			input_with_noise[idx] = input_with_noise[idx] * noise_amplitude;
+				
+			//input_with_noise[idx] = input_with_noise[idx] * (1+noise_amplitude);
+
+
+			float number = dist(generator);
+			//printf("%f  ", number);
+			input_with_noise[idx] = input_with_noise[idx] + number;		
 		}
 
 	}
@@ -752,7 +760,7 @@ int fsmTest()
 	
 		writeFIFO(N, FIFO_write_status_ptr, FIFO_write_ptr, true);
 
-		usleep(1000);
+		usleep(100);
 
 		while (!FIFO_EMPTY(FIFO_read_status_ptr))
 		{
@@ -910,13 +918,21 @@ int loopBack()
 
 void demoEvaluate()
 {
-	int N;
+	int input_num;
 	printf("input numeber of input:");
-	scanf("%d", &N);
+	scanf("%d", &input_num);
 
 	float error_count = 0;
 
-	for (int i = 0; i != N; i++)
+	float noise_level = 0.09;
+	// printf("input noise:");
+	// scanf("%f", &noise_level);
+
+	int print_info = 0;
+	// printf("print info?:");
+	// scanf("%f", &print_info);
+
+	for (int i = 0; i != input_num; i++)
 	{	
 		int input_class_index = rand() % 50;
 
@@ -926,7 +942,7 @@ void demoEvaluate()
 
 		int classification_result = -1;
 
-		doInferenceWrapper(input_class_index, 0, spike_neuron_idx, spike_time, input_spike_record, classification_result, false);
+		doInferenceWrapper(input_class_index, noise_level, spike_neuron_idx, spike_time, input_spike_record, classification_result, print_info);
 		
 		cout << "input class: " << input_class_index << ", classification result: " << classification_result << ", ";
 
@@ -1017,9 +1033,13 @@ int main(int argc, char *argv[])
 			{
 				int input_class_index;
 
-				printf("select class id \n");
+				printf("select class id: \n");
 
 				scanf("%d", &input_class_index);
+
+				// printf("input noise level: \n");
+				float noise_level = 0.09;
+				//scanf("%f", &noise_level);
 
 				vector<int> spike_neuron_idx;
 				vector<int> spike_time;
@@ -1027,7 +1047,7 @@ int main(int argc, char *argv[])
 
 				int classification_result = -1;
 
-				doInferenceWrapper(input_class_index, 0, spike_neuron_idx, spike_time, input_spike_record, classification_result, true);
+				doInferenceWrapper(input_class_index, noise_level, spike_neuron_idx, spike_time, input_spike_record, classification_result, true);
 
 				cout << "input class: " << input_class_index << ", classification result: " << classification_result << "\n";
 
