@@ -6,14 +6,18 @@ Created on Mon Oct  8 11:53:12 2018
 """
 
 import subprocess
+# from pythonrc import *
+# from vector import *
 
-class raster_plot():
+class rasterplot():
     
     def __init__(self, width, hight):
         '''
         width is length of a window, hight is numeber of neuron/input
         '''
-        self.plot_mat = [x[:] for x in [[0] * width] * hight]
+        # self.plot_mat = [x[:] for x in [[0] * width] * hight]
+        # [0] -> neuron index, [1] -> spike times
+        self.spiketimes = [[] for i in range(2)]
     
     def set_pixel(self, row, col):
         '''
@@ -37,7 +41,9 @@ class raster_plot():
         for tick in range(len(mat)):
             for neuron_idx in range(len(mat[tick])):
                 if (mat[tick][neuron_idx] == '1'):
-                    self.set_pixel(neuron_idx, tick)
+                    #self.set_pixel(neuron_idx, tick)
+                    self.spiketimes[0].append(neuron_idx)
+		    self.spiketimes[1].append(tick)
         
         
         
@@ -54,8 +60,13 @@ class raster_plot():
         for line in lines:
             splited_line = line.split(',')
             neuron_idx = int(splited_line[0])
+            self.spiketimes[0].append(neuron_idx)
+
             tick = int(splited_line[1])
-            self.set_pixel(neuron_idx, tick)
+            self.spiketimes[1].append(tick)
+
+            #self.set_pixel(neuron_idx, tick)
+			
     
     def plot_raster(self, pixel_symbol_off = '.', pixel_symbol_on = '▌'):
         '''
@@ -73,42 +84,60 @@ class raster_plot():
         return outstr
 
 
-# call demo program
-        
-# specify arguments
-demofile = "./de1_demo"
-classidx_int = 1
-noise_float = 0.1
+def get_output(classid):
+    from pythonrc import *
+    from vector import *
+    # call demo program
 
-# convert argument to string
-classidx = "-class=" + str(classidx_int)
-noise = "-noise=" + str(noise_float)
+    # specify arguments
+    demofile = "./de1_demo"
+    classidx_int = classid
+    noise_float = 0.1
 
-# put all arguments to a list
-arglist = [demofile, classidx, noise]
+    # convert argument to string
+    classidx = "-class=" + str(classidx_int)
+    noise = "-noise=" + str(noise_float)
 
-# call the arm demo program, comment out when debug
-# the program may return a value, it's not used now
-# each time the program is called, it will execute once and create two file in
-# same folder as the program: 'input_spike_record.txt' and 'output_spike_record.txt'
-#ret = subprocess.call(arglist)
+    # put all arguments to a list
+    arglist = [demofile, classidx, noise]
+
+    # call the arm demo program, comment out when debug
+    # the program may return a value, it's not used now
+    # each time the program is called, it will execute once and create two file in
+    # same folder as the program: 'input_spike_record.txt' and 'output_spike_record.txt'
+    ret = subprocess.call(arglist)
 
 
 
-# plot the input spike
-# window size is 100, there are 128 axons
-inp = raster_plot(100, 128)
-inp.read_input_spike_file('D:/de1/test/fifo_test_simplified/arm-program/cpp/input_spike_record.txt')
-# return a well formatted string
-inpplot = inp.plot_raster()
+    # plot the input spike
+    # window size is 100, there are 128 axons
+    inp = rasterplot(100, 128)
+    inp.read_input_spike_file('input_spike_record.txt')
+    # return a well formatted string
+    # inpplot = inp.plot_raster()
 
-# plot output spikes
-# window is 100, 50 neurons
-outp = raster_plot(100, 50)
-outp.read_output_spike_file('D:/de1/test/fifo_test_simplified/arm-program/cpp/output_spike_record.txt')
-# you can specify the symbol which represent the pixel
-outplot = outp.plot_raster(pixel_symbol_off = ' ', pixel_symbol_on = '*')
+    # plot output spikes
+    # window is 100, 50 neurons
+    outp = rasterplot(100, 50)
+    outp.read_output_spike_file('output_spike_record.txt')
+    # you can specify the symbol which represent the pixel
+    # outplot = outp.plot_raster(pixel_symbol_off = ' ', pixel_symbol_on = '*')
+    # outplot = outp.plot_raster()
 
-print(outplot)
+    figure()  ## uncomment to preserve the raster plot when another class is entered
 
+    # need to convert neuron index and spike times to 'vector'
+    plot(vector(outp.spiketimes[1]), vector(outp.spiketimes[0]), '.')
+   
+    figure()
+    #draw_now()
+
+    # print(inpplot)
+    print(outplot)
+
+    plot(vector(inp.spiketimes[1]), vector(inp.spiketimes[0]), '.')
+    draw_now()
+
+
+    return classid
 
