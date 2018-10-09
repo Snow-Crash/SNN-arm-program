@@ -596,12 +596,12 @@ vector<vector<int> >& input_spike_record, int& classification_result, bool print
 	{
 		for (unsigned int idx = 0; idx != input_with_noise.size(); idx++)
 		{
-			float noise_amplitude = RandomFloat(0, noise_level);
+			// float noise_amplitude = RandomFloat(0, noise_level);
 			
 			//prinft("noise_amplitude %f", noise_amplitude);
 
-			if ((rand() % 2) == 0)
-				noise_amplitude = 0 - noise_amplitude;
+			// if ((rand() % 2) == 0)
+			// 	noise_amplitude = 0 - noise_amplitude;
 
 				
 			//input_with_noise[idx] = input_with_noise[idx] * (1+noise_amplitude);
@@ -924,7 +924,7 @@ void demoEvaluate()
 
 	float error_count = 0;
 
-	float noise_level = 0.09;
+	float noise_level =0;
 	// printf("input noise:");
 	// scanf("%f", &noise_level);
 
@@ -1038,7 +1038,7 @@ int main(int argc, char *argv[])
 				scanf("%d", &input_class_index);
 
 				// printf("input noise level: \n");
-				float noise_level = 0.09;
+				float noise_level =0;
 				//scanf("%f", &noise_level);
 
 				vector<int> spike_neuron_idx;
