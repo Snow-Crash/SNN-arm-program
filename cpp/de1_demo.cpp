@@ -497,7 +497,7 @@ vector<int>& spike_neuron_idx, vector<int>& spike_time, vector<vector<int>>& inp
 
 		if (print_info == true)
 		{
-			printf("neruons spiked in current tick: \n");
+			printf("neruons spiked in current tick: ");
 		}
 
 		while (!FIFO_EMPTY(FIFO_read_status_ptr)) 
