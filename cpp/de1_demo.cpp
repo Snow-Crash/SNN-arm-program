@@ -185,13 +185,13 @@ void read_rate_file_line(string filepath, int line_number, vector<float>& rates)
 			while (getline(lineStream, cell, ' '))
 				temprate.push_back(cell);
 			//tempmat.push_back(parsedline);
+			break;
 		}
 		linecount++;
 	}
 
 	for (unsigned int i = 0; i != temprate.size(); i++)
 	{
-
 		float rate = stof(temprate[i]);
 		rates.push_back(rate);
 	}
@@ -581,13 +581,15 @@ vector<vector<int> >& input_spike_record, int& classification_result, bool print
 	// rate of each input
 
 	string filename = "./rates.txt";
-	vector<vector<float> > rate_mat;
-	read_rate_file(filename, rate_mat);
+	// vector<vector<float> > rate_mat;
+	// read_rate_file(filename, rate_mat);
 
 	//select a test case
 	int rate_line_number = 3*class_index + rand() % 3;
 
 	default_random_engine generator;
+	vector<float> input_rates;
+	read_rate_file_line(filename, rate_line_number, input_rates);
 
 	normal_distribution<> dist(0, noise_level);
 
@@ -597,6 +599,7 @@ vector<vector<int> >& input_spike_record, int& classification_result, bool print
 		for (unsigned int idx = 0; idx != input_with_noise.size(); idx++)
 		{
 			// float noise_amplitude = RandomFloat(0, noise_level);
+	// vector<float> input_with_noise = rate_mat[rate_line_number];
 			
 			//prinft("noise_amplitude %f", noise_amplitude);
 
@@ -604,7 +607,7 @@ vector<vector<int> >& input_spike_record, int& classification_result, bool print
 			// 	noise_amplitude = 0 - noise_amplitude;
 
 				
-			//input_with_noise[idx] = input_with_noise[idx] * (1+noise_amplitude);
+	// 		//input_with_noise[idx] = input_with_noise[idx] * (1+noise_amplitude);
 
 
 			float number = dist(generator);
@@ -620,7 +623,7 @@ vector<vector<int> >& input_spike_record, int& classification_result, bool print
 	// vector<int> spike_time;
 	// vector<vector<int> > input_spike_record;
 
-	doInference(100, input_with_noise, neuron_spike_count, spike_neuron_idx,
+	doInference(100, input_rates, neuron_spike_count, spike_neuron_idx,
 	spike_time, input_spike_record, true, print_info);
 
 	// write to txt file
