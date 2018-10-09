@@ -587,35 +587,35 @@ vector<vector<int> >& input_spike_record, int& classification_result, bool print
 	//select a test case
 	int rate_line_number = 3*class_index + rand() % 3;
 
-	default_random_engine generator;
 	vector<float> input_rates;
 	read_rate_file_line(filename, rate_line_number, input_rates);
 
-	normal_distribution<> dist(0, noise_level);
+	// default_random_engine generator;
 
-	vector<float> input_with_noise = rate_mat[rate_line_number];
-	if (noise_level != 0)
-	{
-		for (unsigned int idx = 0; idx != input_with_noise.size(); idx++)
-		{
-			// float noise_amplitude = RandomFloat(0, noise_level);
+	// normal_distribution<> dist(0, noise_level);
+
 	// vector<float> input_with_noise = rate_mat[rate_line_number];
+	// if (noise_level != 0)
+	// {
+	// 	for (unsigned int idx = 0; idx != input_with_noise.size(); idx++)
+	// 	{
+	// 		// float noise_amplitude = RandomFloat(0, noise_level);
 			
-			//prinft("noise_amplitude %f", noise_amplitude);
+	// 		//prinft("noise_amplitude %f", noise_amplitude);
 
-			// if ((rand() % 2) == 0)
-			// 	noise_amplitude = 0 - noise_amplitude;
+	// 		// if ((rand() % 2) == 0)
+	// 		// 	noise_amplitude = 0 - noise_amplitude;
 
 				
 	// 		//input_with_noise[idx] = input_with_noise[idx] * (1+noise_amplitude);
 
 
-			float number = dist(generator);
-			//printf("%f  ", number);
-			input_with_noise[idx] = input_with_noise[idx] + number;		
-		}
+	// 		float number = dist(generator);
+	// 		//printf("%f  ", number);
+	// 		input_with_noise[idx] = input_with_noise[idx] + number;		
+	// 	}
 
-	}
+	// }
 
 	//generate_Spike_Array(rate_mat[rate_line_number], spike_array);
 
