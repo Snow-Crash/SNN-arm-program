@@ -1071,6 +1071,8 @@ int main(int argc, char *argv[])
 		doInferenceWrapper(class_index, noise, spike_neuron_idx, spike_time, input_spike_record, classification_result, false);
 
 		cout << "input class: " << class_index << ", classification result: " << classification_result << "\n";
+
+		return classification_result;
 	}
 
 
