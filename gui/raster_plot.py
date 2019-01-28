@@ -18,6 +18,8 @@ class rasterplot():
         # self.plot_mat = [x[:] for x in [[0] * width] * hight]
         # [0] -> neuron index, [1] -> spike times
         self.spiketimes = [[] for i in range(2)]
+        self.window = width
+        self.neuron_number = hight
     
     def set_pixel(self, row, col):
         '''
@@ -66,6 +68,10 @@ class rasterplot():
             self.spiketimes[1].append(tick)
 
             #self.set_pixel(neuron_idx, tick)
+            self.spiketimes[1].append(self.window)
+            self.spiketimes[0].append(self.neuron_number)
+            self.spiketimes[1].append(0)
+            self.spiketimes[0].append(0)
 			
     
     def plot_raster(self, pixel_symbol_off = '.', pixel_symbol_on = '▌'):
@@ -133,11 +139,11 @@ def get_output(classid):
     #draw_now()
 
     # print(inpplot)
-    print(outplot)
+    # print(outplot)
 
     plot(vector(inp.spiketimes[1]), vector(inp.spiketimes[0]), '.')
     draw_now()
 
 
-    return classid
+    return ret
 
