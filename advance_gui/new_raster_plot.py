@@ -109,14 +109,14 @@ def get_output(classid):
     noise = "-noise=" + str(noise_float)
 
     # put all arguments to a list
-#    arglist = [demofile, classidx, noise]
+    arglist = [demofile, classidx, noise]
 
     # call the arm demo program, comment out when debug
     # the program may return a value, it's not used now
     # each time the program is called, it will execute once and create two file in
     # same folder as the program: 'input_spike_record.txt' and 'output_spike_record.txt'
-#    ret = subprocess.call(arglist)
-    ret = 1
+	# for debug gui, this can be commented out
+    ret = subprocess.call(arglist)
 
     # plot the input spike
     # window size is 100, there are 128 axons
