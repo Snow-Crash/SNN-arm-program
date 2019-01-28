@@ -12,3 +12,9 @@ advanced_gui is also a complete working demo, contain gui and arm executable. gu
 
 fsm_simulate.v is a fsm. it is the same as fsm implemented in DE1_SoC_Computer.v. Put it in a individual file for modelsim simulation.
 fsm_tb is corresponding testbench
+
+
+to compile the arm program, go to cpp folder and run makefile
+
+to run demo
+upload gui or advance_gui to de1 board, and execute gui.py or new_gui.py
